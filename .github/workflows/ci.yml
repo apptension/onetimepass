@@ -34,7 +34,6 @@ jobs:
         enable-pep582: true  # Enable PEP 582 package loading globally
     - name: Install dependencies
       run: pdm install       # Then you can use pdm in the following steps.- name: Install dependencies
-    - uses: pre-commit/action@v2.0.0
     - name: Test
       run: |
         python -m unittest
