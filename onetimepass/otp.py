@@ -18,7 +18,9 @@ def get_db_data(db: BaseDB) -> DatabaseSchema:
     try:
         return db.read()
     except DBDoesNotExist:
-        raise click.UsageError("Database does not exist. Try to initialize it first")
+        raise click.UsageError(
+            "Database does not exist. Try to initialize it first `opt init`"
+        )
 
 
 try:
