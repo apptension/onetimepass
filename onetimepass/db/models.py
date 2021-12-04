@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import typing
 
 from pydantic import BaseModel
@@ -60,7 +61,4 @@ class DatabaseSchema(BaseModel):
 
     @classmethod
     def initialize(cls) -> DatabaseSchema:
-        return cls(
-            otp=EmptyDict(),
-            version=VERSION
-        )
+        return cls(otp=EmptyDict(), version=VERSION)
