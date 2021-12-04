@@ -1,15 +1,16 @@
 [project]
 name = "onetimepass"
-version = {use_scm = true}
 description = ""
 authors = [
     {name = "Daniel Staśczak", email = "dstasczak@apptension.com"},
     {name = "Krystian Hanek", email = "khanek@apptension.com"},
 ]
 dependencies = [
-    "click~=8.0"]
+    "click~=8.0",
+    "pydantic~=1.8",
+]
 requires-python = ">=3.10"
-dynamic = ["classifiers", "version"]
+dynamic = ["version"]
 license = {text = "MIT"}
 
 [project.urls]
@@ -22,6 +23,7 @@ build-backend = "pdm.pep517.api"
 
 [tool]
 [tool.pdm]
+version = {use_scm = true}
 [tool.pdm.dev-dependencies]
 dev = [
     "pre-commit~=2.16",
