@@ -1,22 +1,27 @@
 import enum
+import functools
+import pathlib
 import random
-import secrets
 import string
 from typing import Dict
 
 import click
 
+from onetimepass import settings
+from onetimepass.db.json_encrypted import JSONEncryptedDB
 
-KEY = secrets.token_hex()
-
-
-def keyring_installed():
-    try:
-        import keyring
-    except ImportError:
-        return False
-    else:
-        return True
+try:
+    import keyring  # noqa 'keyring' in the try block with 'except ImportError' should also be defined in the except block
+except ImportError:
+    KEYRING_INSTALLED = False
+else:
+    KEYRING_INSTALLED = True
+    KEYRING_PARAMS = {
+        "service_name": settings.KEYRING_SERVICE_NAME,
+        "username": settings.KEYRING_USERNAME,
+    }
+    keyring_set = functools.partial(keyring.set_password, **KEYRING_PARAMS)
+    keyring_get = functools.partial(keyring.get_password, **KEYRING_PARAMS)
 
 
 def handle_conflicting_options(options: Dict[str, bool]):
@@ -30,16 +35,16 @@ def handle_conflicting_options(options: Dict[str, bool]):
 @click.option("color", "-c/-C", "--color/--no-color", default=True, show_default=True)
 @click.option("quiet", "-q", "--quiet", is_flag=True)
 @click.option(
-    "keyring",
+    "keyring_",
     "-k/-K",
     "--keyring/--no-keyring",
-    default=keyring_installed,
+    default=KEYRING_INSTALLED,
     show_default="True if keyring installed, False otherwise",
 )
 @click.pass_context
-def otp(ctx: click.Context, color: bool, quiet: bool, keyring: bool):
+def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool):
     ctx.ensure_object(dict)
-    ctx.obj.update({"color": color, "quiet": quiet, "keyring": keyring})
+    ctx.obj.update({"color": color, "quiet": quiet, "keyring_": keyring_})
 
 
 @otp.command(help="Print the one-time password for the specified ALIAS.")
@@ -64,26 +69,43 @@ def show(ctx: click.Context, alias: str):
 @otp.command(help="Initialize the master key and local database.")
 @click.pass_context
 def init(ctx: click.Context):
-    quiet = ctx.obj["quiet"]
-    keyring = ctx.obj["keyring"]
+    try:
+        quiet = ctx.obj["quiet"]
+        keyring_ = ctx.obj["keyring_"]
 
-    handle_conflicting_options({"-q, --quiet": quiet, "-K, --no-keyring": not keyring})
+        handle_conflicting_options(
+            {"-q, --quiet": quiet, "-K, --no-keyring": not keyring_}
+        )
 
-    key_ = KEY  # generated
+        if pathlib.Path(settings.DB_PATH).exists():
+            raise click.UsageError(
+                f"The local database `{settings.DB_PATH}` is already initialized"
+            )
 
-    if not quiet:
-        click.echo(key_)
+        db = JSONEncryptedDB.initialize(settings.DB_PATH)
+        key_ = db.key.decode()
+
+        if keyring_ and KEYRING_INSTALLED:
+            keyring_set(password=key_)
+
+        if not quiet:
+            click.echo(key_)
+    except click.ClickException as e:
+        raise e
+    except Exception as e:
+        pathlib.Path(settings.DB_PATH).unlink(missing_ok=True)
+        raise e
 
 
 @otp.command(help="Print the master key.")
 @click.pass_context
 def key(ctx: click.Context):
     quiet = ctx.obj["quiet"]
-    keyring = ctx.obj["keyring"]
+    keyring_ = ctx.obj["keyring_"]
 
-    if keyring:
-        if keyring_installed():
-            key_ = KEY  # got from keyring
+    if keyring_:
+        if KEYRING_INSTALLED:
+            key_ = keyring_get()
         else:
             raise click.UsageError("keyring not installed")
     else:
