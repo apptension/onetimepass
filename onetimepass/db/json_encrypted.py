@@ -6,7 +6,9 @@ import os
 from cryptography.fernet import Fernet
 
 from .base import BaseDB
+from .models import AliasSchema
 from .models import DatabaseSchema
+from .models import TOTPParams
 
 
 class JSONEncryptedDB(BaseDB):

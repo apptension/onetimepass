@@ -6,6 +6,10 @@ from typing import Dict
 
 import click
 
+from onetimepass import algorithm
+from onetimepass import settings
+from onetimepass.db import JSONEncryptedDB
+
 
 KEY = secrets.token_hex()
 
@@ -17,6 +21,16 @@ def keyring_installed():
         return False
     else:
         return True
+
+
+def echo_alias(alias: str, code: int, seconds_remaining: int, color: bool):
+    seconds_remaining_str = f"{seconds_remaining:0>2}s"
+    if color:
+        if seconds_remaining <= 10:
+            seconds_remaining_str = click.style(
+                f"{seconds_remaining:0>2}s", fg="red", bold=True
+            )
+    click.echo(f"{alias}: {code} {seconds_remaining_str}")
 
 
 def handle_conflicting_options(options: Dict[str, bool]):
@@ -46,19 +60,26 @@ def otp(ctx: click.Context, color: bool, quiet: bool, keyring: bool):
 @click.argument("alias")
 @click.pass_context
 def show(ctx: click.Context, alias: str):
-    color = ctx.obj["color"]
-
-    code = "".join(random.choices(string.digits, k=6))
-    seconds_remaining = random.randint(1, 30)
-
-    seconds_remaining_str = f"{seconds_remaining:0>2}s"
-    if color:
-        if seconds_remaining <= 10:
-            seconds_remaining_str = click.style(
-                f"{seconds_remaining:0>2}s", fg="red", bold=True
-            )
-
-    click.echo(f"{alias}: {code} {seconds_remaining_str}")
+    db = JSONEncryptedDB(
+        path=settings.DB_PATH, key=b"fVs9tcNXSqAnIflXufDKPamkEHawPLFi7QFuCEM4jfQ="
+    )
+    data = db.read()
+    try:
+        alias_data = data.otp[alias]
+    except KeyError:
+        raise click.UsageError(f"Alias: {alias} does not exist")
+    params = algorithm.TOTPParameters(
+        secret=alias_data.secret.encode(),
+        digits_count=alias_data.digits_count,
+        hash_algorithm=alias_data.hash_algorithm,
+        time_step_seconds=alias_data.params.time_step_seconds,
+    )
+    echo_alias(
+        alias,
+        algorithm.totp(params),
+        algorithm.get_seconds_remaining(params),
+        ctx.obj["color"],
+    )
 
 
 @otp.command(help="Initialize the master key and local database.")
@@ -98,6 +119,15 @@ def key(ctx: click.Context):
 @click.pass_context
 def delete(ctx: click.Context, alias: str):
     quiet = ctx.obj["quiet"]
+    db = JSONEncryptedDB(
+        path=settings.DB_PATH, key=b"fVs9tcNXSqAnIflXufDKPamkEHawPLFi7QFuCEM4jfQ="
+    )
+    data = db.read()
+    try:
+        del data.otp[alias]
+    except KeyError:
+        raise click.UsageError(f"Alias: {alias} does not exist")
+    db.write(data)
 
     if not quiet:
         click.echo(f"{alias} deleted")
@@ -106,7 +136,12 @@ def delete(ctx: click.Context, alias: str):
 @otp.command("ls", help="List all added ALIASes.")
 @click.pass_context
 def list_(ctx: click.Context):
-    pass
+    db = JSONEncryptedDB(
+        path=settings.DB_PATH, key=b"fVs9tcNXSqAnIflXufDKPamkEHawPLFi7QFuCEM4jfQ="
+    )
+    data = db.read()
+    for alias in data.otp.keys():
+        click.echo(alias)
 
 
 class ExportFormat(str, enum.Enum):
@@ -148,6 +183,22 @@ def import_(ctx: click.Context, file, format_: list[str]):
 def add(
     ctx: click.Context, alias: str, uri: bool, label: str, period: int, issuer: str
 ):
+    # TODO(khanek) POC
+    db = JSONEncryptedDB(
+        path=settings.DB_PATH, key=b"fVs9tcNXSqAnIflXufDKPamkEHawPLFi7QFuCEM4jfQ="
+    )
+    data = db.read()
+    data.add_totp_alias(
+        name=alias,
+        secret=secrets.token_hex(),
+        digits_count=6,
+        hash_algorithm="sha1",
+        initial_time=0,
+        time_step_seconds=30,
+    )
+    db.write(data)
+    return  # TODO(khanek) Remove after POC
+
     quiet = ctx.obj["quiet"]
 
     if uri:
