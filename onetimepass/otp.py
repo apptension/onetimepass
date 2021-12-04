@@ -17,8 +17,8 @@ except ImportError:
 else:
     KEYRING_INSTALLED = True
     KEYRING_PARAMS = {
-        "service_name": "onetimepass",
-        "username": "master key",
+        "service_name": settings.KEYRING_SERVICE_NAME,
+        "username": settings.KEYRING_USERNAME,
     }
     keyring_set = functools.partial(keyring.set_password, **KEYRING_PARAMS)
     keyring_get = functools.partial(keyring.get_password, **KEYRING_PARAMS)
