@@ -38,4 +38,4 @@ class JSONEncryptedDB(BaseDB):
 
     def write(self, data: DatabaseSchema):
         with open(self.path, "wb") as f:
-            f.write(self.fernet.encrypt(json.dumps(data.dict()).encode()))
+            f.write(self.fernet.encrypt(data.json().encode()))
