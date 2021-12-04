@@ -31,7 +31,7 @@ class JSONEncryptedDB(BaseDB):
     def read(self) -> DatabaseSchema:
         with open(self.path, "rb") as f:
             data = self.fernet.decrypt(f.read())
-        return json.loads(data)
+        return DatabaseSchema(**json.loads(data))
 
     def write(self, data: DatabaseSchema):
         with open(self.path, "wb") as f:

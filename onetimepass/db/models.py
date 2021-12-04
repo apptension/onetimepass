@@ -1,17 +1,16 @@
 from __future__ import annotations
-
 import typing
 
 from pydantic import BaseModel
 
-VERSION = "1.0.0"
+from onetimepass.settings import DB_VERSION
 
 
 """
 Example database schema
 {
   "otp": {},
-  "version": "1.0.0",
+  "version": "<DB_VERSION>",
 
   or
 
@@ -30,7 +29,7 @@ Example database schema
       }
     }
   },
-  "version": "1.0.0"
+  "version": "<DB_VERSION>"
 }
 """
 
@@ -39,11 +38,11 @@ class EmptyDict(BaseModel):
     pass
 
 
-class HOTPSchema(BaseModel):
+class HOTPParams(BaseModel):
     counter: int
 
 
-class TOTPDSchema(BaseModel):
+class TOTPParams(BaseModel):
     initial_time: int
     time_step_seconds: int
 
@@ -52,7 +51,7 @@ class AliasSchema(BaseModel):
     secret: str
     digits_count: int
     hash_algorithm: str
-    params: typing.Union[HOTPSchema, TOTPDSchema]
+    params: typing.Union[HOTPParams, TOTPParams]
 
 
 class DatabaseSchema(BaseModel):
@@ -61,4 +60,4 @@ class DatabaseSchema(BaseModel):
 
     @classmethod
     def initialize(cls) -> DatabaseSchema:
-        return cls(otp=EmptyDict(), version=VERSION)
+        return cls(otp=EmptyDict(), version=DB_VERSION)
