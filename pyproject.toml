@@ -18,6 +18,9 @@ license = {text = "MIT"}
 homepage = ""
 
 [project.optional-dependencies]
+keyring = [
+    "keyring~=23.4",
+]
 [build-system]
 requires = ["pdm-pep517"]
 build-backend = "pdm.pep517.api"
