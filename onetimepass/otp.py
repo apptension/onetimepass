@@ -1,14 +1,15 @@
 import enum
 import functools
 import pathlib
-import random
-import string
+import secrets
 from typing import Dict
 
 import click
 
+from onetimepass import algorithm
 from onetimepass import settings
-from onetimepass.db.json_encrypted import JSONEncryptedDB
+from onetimepass.db import JSONEncryptedDB
+
 
 try:
     import keyring  # noqa 'keyring' in the try block with 'except ImportError' should also be defined in the except block
@@ -22,6 +23,16 @@ else:
     }
     keyring_set = functools.partial(keyring.set_password, **KEYRING_PARAMS)
     keyring_get = functools.partial(keyring.get_password, **KEYRING_PARAMS)
+
+
+def echo_alias(alias: str, code: int, seconds_remaining: int, color: bool):
+    seconds_remaining_str = f"{seconds_remaining:0>2}s"
+    if color:
+        if seconds_remaining <= 10:
+            seconds_remaining_str = click.style(
+                seconds_remaining_str, fg="red", bold=True
+            )
+    click.echo(f"{alias}: {code} {seconds_remaining_str}")
 
 
 def handle_conflicting_options(options: Dict[str, bool]):
@@ -51,19 +62,44 @@ def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool):
 @click.argument("alias")
 @click.pass_context
 def show(ctx: click.Context, alias: str):
-    color = ctx.obj["color"]
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = db.read()
+    try:
+        alias_data = data.otp[alias]
+    except KeyError:
+        raise click.UsageError(f"Alias: {alias} does not exist")
+    params = algorithm.TOTPParameters(
+        secret=alias_data.secret.encode(),
+        digits_count=alias_data.digits_count,
+        hash_algorithm=alias_data.hash_algorithm,
+        time_step_seconds=alias_data.params.time_step_seconds,
+    )
+    echo_alias(
+        alias,
+        algorithm.totp(params),
+        algorithm.get_seconds_remaining(params),
+        ctx.obj["color"],
+    )
 
-    code = "".join(random.choices(string.digits, k=6))
-    seconds_remaining = random.randint(1, 30)
 
-    seconds_remaining_str = f"{seconds_remaining:0>2}s"
-    if color:
-        if seconds_remaining <= 10:
-            seconds_remaining_str = click.style(
-                f"{seconds_remaining:0>2}s", fg="red", bold=True
-            )
-
-    click.echo(f"{alias}: {code} {seconds_remaining_str}")
+@otp.command(help="Print the one-time password for all ALIASes.")
+@click.pass_context
+def show_all(ctx: click.Context):
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = db.read()
+    for alias, alias_data in data.otp.items():
+        params = algorithm.TOTPParameters(
+            secret=alias_data.secret.encode(),
+            digits_count=alias_data.digits_count,
+            hash_algorithm=alias_data.hash_algorithm,
+            time_step_seconds=alias_data.params.time_step_seconds,
+        )
+        echo_alias(
+            alias,
+            algorithm.totp(params),
+            algorithm.get_seconds_remaining(params),
+            ctx.obj["color"],
+        )
 
 
 @otp.command(help="Initialize the master key and local database.")
@@ -120,6 +156,13 @@ def key(ctx: click.Context):
 @click.pass_context
 def delete(ctx: click.Context, alias: str):
     quiet = ctx.obj["quiet"]
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = db.read()
+    try:
+        del data.otp[alias]
+    except KeyError:
+        raise click.UsageError(f"Alias: {alias} does not exist")
+    db.write(data)
 
     if not quiet:
         click.echo(f"{alias} deleted")
@@ -128,7 +171,10 @@ def delete(ctx: click.Context, alias: str):
 @otp.command("ls", help="List all added ALIASes.")
 @click.pass_context
 def list_(ctx: click.Context):
-    pass
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = db.read()
+    for alias in data.otp.keys():
+        click.echo(alias)
 
 
 class ExportFormat(str, enum.Enum):
@@ -170,6 +216,20 @@ def import_(ctx: click.Context, file, format_: list[str]):
 def add(
     ctx: click.Context, alias: str, uri: bool, label: str, period: int, issuer: str
 ):
+    # TODO(khanek) POC
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = db.read()
+    data.add_totp_alias(
+        name=alias,
+        secret=secrets.token_hex(),
+        digits_count=6,
+        hash_algorithm="sha1",
+        initial_time=0,
+        time_step_seconds=30,
+    )
+    db.write(data)
+    return  # TODO(khanek) Remove after POC
+
     quiet = ctx.obj["quiet"]
 
     if uri:

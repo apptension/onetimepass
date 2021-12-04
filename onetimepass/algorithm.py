@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import hmac
+import math
 
 
 def _get_hmac_result(key: bytes, msg: bytes, hash_algorithm: str) -> bytes:
@@ -67,6 +68,13 @@ class TOTPParameters(BaseOTPParameters):
             hash_algorithm=self.hash_algorithm,
             counter=time_counter,
         )
+
+
+def get_seconds_remaining(params: TOTPParameters) -> int:
+    return params.time_step_seconds - math.floor(
+        (params.current_time.timestamp() - params.initial_time.timestamp())
+        % params.time_step_seconds
+    )
 
 
 def hotp(parameters: HOTPParameters) -> int:

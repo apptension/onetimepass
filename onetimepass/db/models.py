@@ -35,7 +35,7 @@ Example database schema
 """
 
 
-class EmptyDict(BaseModel):
+class EmptyDict(typing.TypedDict):
     pass
 
 
@@ -56,9 +56,27 @@ class AliasSchema(BaseModel):
 
 
 class DatabaseSchema(BaseModel):
-    otp: typing.Union[EmptyDict, dict[str, AliasSchema]]
+    otp: typing.Union[dict[str, AliasSchema], EmptyDict]
     version: str
 
     @classmethod
     def initialize(cls) -> DatabaseSchema:
         return cls(otp=EmptyDict(), version=DB_VERSION)
+
+    def add_totp_alias(
+        self,
+        name: str,
+        secret: str,
+        digits_count: int,
+        hash_algorithm: str,
+        initial_time: int,
+        time_step_seconds: int = 30,
+    ):
+        self.otp[name] = AliasSchema(
+            secret=secret,
+            digits_count=digits_count,
+            hash_algorithm=hash_algorithm,
+            params=TOTPParams(
+                initial_time=initial_time, time_step_seconds=time_step_seconds,
+            ),
+        )
