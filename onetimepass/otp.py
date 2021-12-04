@@ -8,7 +8,17 @@ import click
 
 from onetimepass import algorithm
 from onetimepass import settings
+from onetimepass.db import BaseDB
+from onetimepass.db import DatabaseSchema
+from onetimepass.db import DBDoesNotExist
 from onetimepass.db import JSONEncryptedDB
+
+
+def get_db_data(db: BaseDB) -> DatabaseSchema:
+    try:
+        return db.read()
+    except DBDoesNotExist:
+        raise click.UsageError("Database does not exist. Try to initialize it first")
 
 
 try:
@@ -86,7 +96,7 @@ def show(ctx: click.Context, alias: str):
 @click.pass_context
 def show_all(ctx: click.Context):
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
-    data = db.read()
+    data = get_db_data(db)
     for alias, alias_data in data.otp.items():
         params = algorithm.TOTPParameters(
             secret=alias_data.secret.encode(),
@@ -113,7 +123,7 @@ def init(ctx: click.Context):
             {"-q, --quiet": quiet, "-K, --no-keyring": not keyring_}
         )
 
-        if pathlib.Path(settings.DB_PATH).exists():
+        if JSONEncryptedDB.exists(settings.DB_PATH):
             raise click.UsageError(
                 f"The local database `{settings.DB_PATH}` is already initialized"
             )
@@ -157,7 +167,7 @@ def key(ctx: click.Context):
 def delete(ctx: click.Context, alias: str):
     quiet = ctx.obj["quiet"]
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
-    data = db.read()
+    data = get_db_data(db)
     try:
         del data.otp[alias]
     except KeyError:
@@ -172,7 +182,7 @@ def delete(ctx: click.Context, alias: str):
 @click.pass_context
 def list_(ctx: click.Context):
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
-    data = db.read()
+    data = get_db_data(db)
     for alias in data.otp.keys():
         click.echo(alias)
 
@@ -218,7 +228,7 @@ def add(
 ):
     # TODO(khanek) POC
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
-    data = db.read()
+    data = get_db_data(db)
     data.add_totp_alias(
         name=alias,
         secret=secrets.token_hex(),
