@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "click~=8.0",
     "pydantic~=1.8",
+    "cryptography~=36.0",
 ]
 requires-python = ">=3.10"
 dynamic = ["version"]
