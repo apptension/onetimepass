@@ -93,7 +93,6 @@ def init(ctx: click.Context):
     except click.ClickException as e:
         raise e
     except Exception as e:
-        breakpoint()
         pathlib.Path(settings.DB_PATH).unlink(missing_ok=True)
         raise e
 
