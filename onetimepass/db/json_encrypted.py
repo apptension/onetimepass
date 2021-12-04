@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
+import pathlib
 
 from cryptography.fernet import Fernet
 
 from .base import BaseDB
+from .exceptions import DBDoesNotExist
 from .models import DatabaseSchema
 
 
@@ -25,10 +26,12 @@ class JSONEncryptedDB(BaseDB):
         return db
 
     @classmethod
-    def is_initialized(cls, path: str) -> bool:
-        return os.path.exists(path)
+    def exists(cls, path: str) -> bool:
+        return pathlib.Path(path).exists()
 
     def read(self) -> DatabaseSchema:
+        if not self.exists(self.path):
+            raise DBDoesNotExist()
         with open(self.path, "rb") as f:
             data = self.fernet.decrypt(f.read())
         return DatabaseSchema(**json.loads(data))
