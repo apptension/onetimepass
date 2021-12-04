@@ -56,7 +56,7 @@ class AliasSchema(BaseModel):
 
 
 class DatabaseSchema(BaseModel):
-    otp: typing.Union[EmptyDict, AliasSchema]
+    otp: typing.Union[EmptyDict, dict[str, AliasSchema]]
     version: str
 
     @classmethod
