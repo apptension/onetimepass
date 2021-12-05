@@ -151,6 +151,10 @@ In case you want to migrate the application to the different device, you can exp
 
 ![](docs/database-import-conflict.png)
 
+You can use this not only to transfer the application between the devices, but also to create backups:
+because `onetimepass` is a CLI-based tool, you can even implement the cronjob that will periodically run the `export` in
+the background (⚠️ just remember to encrypt the resulting file and store it somewhere safe).
+
 ### Shell Completion
 
 `onetimepass` can provide tab completion for commands, options, and choice values. Bash, Zsh, and Fish are supported
@@ -166,3 +170,77 @@ $ eval "$(_OTP_COMPLETE=bash_source otp)"
 ```
 
 ![](docs/otp-shell-completion.png)
+
+## Rationale
+
+As the `onetimepass` have multiple alternatives, you may ask why bother with reinventing the wheel instead of using any
+existing solution.  
+This section addresses that.
+
+### Existing alternatives
+
+#### [Google Authenticator](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2)
+
+The main issue with this app is that it does not offer any way to backup the secrets, and synchronize them between the
+devices.
+
+If you don't have the backup of the original QR codes, and you'll lose your mobile phone, you're screwed. Yes, services
+that provide the 2FA often offer the backup codes, but not every one of them, and this is not the optimal solution.
+
+In theory, if you root the device, you can access the local database, but not everyone wants or can root their mobile
+phone, as this can e.g. void a device's warranty.
+
+Besides, if you root the device, you can see the local database is stored in the plain text, which is a big security
+risk.
+
+#### [Authy](https://authy.com/)
+
+It does allow synchronizing secrets between the devices, but this happens through the provider servers. The
+application [neither sent nor store your backup password](https://support.authy.com/hc/en-us/articles/115001750008-Backups-and-Sync-in-Authy), but
+it can still be non-optimal for some people to trust the external provider to handle such sensitive data.
+
+Also, Authy
+[does not support export or import](https://support.authy.com/hc/en-us/articles/1260805179070-Export-or-Import-Tokens-in-the-Authy-app)
+of the secrets.
+
+#### [pass](https://www.passwordstore.org/) or [gopass](https://www.gopass.pw/)
+
+`pass` is an extensible CLI-based password manager, and there is a [pass-otp](https://github.com/tadfisher/pass-otp)
+plugin to handle TOTP (although, HOTP is not supported).
+
+One issue is that it uses GnuPG for encrypting the local database, which can be tedious to configure:
+> To be honest, a few first times I tried to configure it, I failed miserably. This should be much easier and faster.
+~ [Daniel Staśczak](https://github.com/Toreno96)
+
+The second issue is that, as mentioned above, `pass` is _primarily_ the password manager.
+If one wants only the TOTP client, it's a little bit of an overkill to install the whole password manager for that.
+
+### The GUI clients in general
+
+This is more of a personal preference, but if you use the GUI-based OTP client, especially on your mobile phone, there
+are some extra steps everytime you need to use it:
+1. You have to get your phone.
+2. You have to open the app.
+3. You have to type the code manually, if you need to enter the code on another device (e.g. to authorize on the
+   desktop).
+
+This is _not_ very inconvenient, but I bet there were at least few times when you didn't had your phone with you while
+you had to authorize into the AWS account while working on something urgent, or get your phone out of the pocket every
+few hours, because the Keeper logged out you out of a sudden once again in a day.
+
+If you're CLI power-user, using the CLI-based tool is just much quicker and convenient. And you can create some crazy
+pipelines (see the examples in the **Usage** section).
+
+### Security
+
+While `onetimepass` does reinvent a wheel in general, one of the main goals of the project is to still be a secure
+solution, and do _not_ reinvent the wheel in regard to the security. Because of this reason, for generating the master
+key and encrypting the local database, the [high-level cryptographic library](https://cryptography.io/en/latest/) is
+used.
+
+The main algorithm for the HOTP/TOTP is implemented based on the official RFC and the reference implementation.
+
+There are some functionalities which can be a security hole if used in an irresponsible manner (e.g. `export`, `key`),
+but the same can be said about the `sudo rm -rf --np-preserve-root /`, right?
+
+Nevertheless, if you see any security issue, please feel free to report it, we're more than happy to consider it.
