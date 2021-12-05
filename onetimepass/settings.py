@@ -1,7 +1,10 @@
 import logging
 
 DB_PATH = "test.db"
-DB_VERSION = "1.0.0"
+DEFAULT_DB_VERSION = "1.0.0"
+SUPPORTED_DB_VERSION = [
+    DEFAULT_DB_VERSION,
+]
 
 KEYRING_SERVICE_NAME = "onetimepass"
 KEYRING_USERNAME = "master key"

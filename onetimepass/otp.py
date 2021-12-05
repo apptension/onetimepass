@@ -1,6 +1,7 @@
 import datetime
 import enum
 import functools
+import json
 import pathlib
 import secrets
 from typing import Dict
@@ -222,7 +223,37 @@ def export(ctx: click.Context, format_: str):
 @EXPORT_FORMAT_OPTION
 @click.pass_context
 def import_(ctx: click.Context, file, format_: str):
-    pass
+    if format_ == ExportFormat.JSON:
+        try:
+            imported_data = json.load(file)
+        except json.JSONDecodeError as e:
+            raise click.UsageError(f"Invalid JSON: {e}")
+    else:
+        raise UnhandledFormatException(format_)
+    imported_data = DatabaseSchema(**imported_data)
+
+    if imported_data.version not in settings.SUPPORTED_DB_VERSION:
+        raise click.UsageError(
+            f"Database version {imported_data.version} is not supported."
+            f" Supported versions: {settings.SUPPORTED_DB_VERSION}"
+        )
+
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = get_db_data(db)
+
+    common_aliases = set(imported_data.otp.keys()).intersection(data.otp.keys())
+    if imported_data.version != data.version:
+        raise click.UsageError("Database version migration is currently not supported")
+
+    if common_aliases:
+        common_aliases_str = ", ".join(common_aliases)
+        raise click.UsageError(
+            f"Your current and imported database have conflicting aliases: {common_aliases_str}."
+            " Consider renaming them in your current database, using `otp mv`, before the import."
+        )
+
+    data.otp |= imported_data.otp
+    db.write(data)
 
 
 @otp.command(help="Add the new secret as the specified ALIAS.")

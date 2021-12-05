@@ -7,7 +7,7 @@ import typing
 from pydantic import BaseModel
 from pydantic import validator
 
-from onetimepass.settings import DB_VERSION
+from onetimepass.settings import DEFAULT_DB_VERSION
 
 
 """
@@ -94,7 +94,7 @@ class DatabaseSchema(BaseModel):
 
     @classmethod
     def initialize(cls) -> DatabaseSchema:
-        return cls(otp=EmptyDict(), version=DB_VERSION)
+        return cls(otp=EmptyDict(), version=DEFAULT_DB_VERSION)
 
     def add_totp_alias(
         self,
