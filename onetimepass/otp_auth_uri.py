@@ -50,7 +50,7 @@ def parse(uri: str) -> OTPAuthURI:
                 0, tz=datetime.timezone.utc
             ),
             "time_step_seconds": __get_query_string_value(
-                query_parsed, "period", settings.DB_DEFAULT_TIME_STEP_SECONDS
+                query_parsed, "period", settings.DEFAULT_TIME_STEP_SECONDS
             ),
         }
         if otp_type == OTPType.TOTP
@@ -63,7 +63,7 @@ def parse(uri: str) -> OTPAuthURI:
         secret=__get_query_string_value(query_parsed, "secret"),
         issuer=__get_query_string_value(query_parsed, "issuer"),
         digits=__get_query_string_value(
-            query_parsed, "digits", settings.DB_DEFAULT_DIGITS_COUNT
+            query_parsed, "digits", settings.DEFAULT_DIGITS_COUNT
         ),
         params=get_params_by_type(otp_type)(**params),
     )

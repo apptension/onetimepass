@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from pydantic import validator
 
 from onetimepass import settings
-from onetimepass.settings import DB_VERSION
+from onetimepass.settings import DEFAULT_DB_VERSION
 
 
 """
@@ -104,7 +104,7 @@ class DatabaseSchema(BaseModel):
 
     @classmethod
     def initialize(cls) -> DatabaseSchema:
-        return cls(otp=EmptyDict(), version=DB_VERSION)
+        return cls(otp=EmptyDict(), version=DEFAULT_DB_VERSION)
 
     def add_alias(self, name: str, data: AliasSchema):
         self.otp[name] = data
@@ -118,7 +118,7 @@ class DatabaseSchema(BaseModel):
         digits_count: int,
         hash_algorithm: OTPAlgorithm,
         initial_time: datetime.datetime,
-        time_step_seconds: int = settings.DB_DEFAULT_TIME_STEP_SECONDS,
+        time_step_seconds: int = settings.DEFAULT_TIME_STEP_SECONDS,
     ):
         self.otp[name] = AliasSchema(
             secret=secret,
@@ -134,9 +134,9 @@ class DatabaseSchema(BaseModel):
 
 
 def get_params_by_type(
-    typ: OTPType,
+    type_: OTPType,
 ) -> typing.Type[HOTPParams] | typing.Type[TOTPParams]:
-    return {OTPType.HOTP: HOTPParams, OTPType.TOTP: TOTPParams,}[typ]
+    return {OTPType.HOTP: HOTPParams, OTPType.TOTP: TOTPParams}[type_]
 
 
 def create_alias_schema(

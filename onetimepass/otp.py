@@ -1,6 +1,7 @@
 import datetime
 import enum
 import functools
+import json
 import pathlib
 from typing import Dict
 
@@ -191,7 +192,7 @@ def key(ctx: click.Context):
     click.echo(key_)
 
 
-@otp.command(help="Remove the secret for the specified ALIAS.")
+@otp.command("rm", help="Remove the secret for the specified ALIAS.")
 @click.argument("alias")
 @click.confirmation_option(prompt="Are you sure?")
 @click.pass_context
@@ -249,7 +250,37 @@ def export(ctx: click.Context, format_: str):
 @EXPORT_FORMAT_OPTION
 @click.pass_context
 def import_(ctx: click.Context, file, format_: str):
-    pass
+    if format_ == ExportFormat.JSON:
+        try:
+            imported_data = json.load(file)
+        except json.JSONDecodeError as e:
+            raise click.UsageError(f"Invalid JSON: {e}")
+    else:
+        raise UnhandledFormatException(format_)
+    imported_data = DatabaseSchema(**imported_data)
+
+    if imported_data.version not in settings.SUPPORTED_DB_VERSION:
+        raise click.UsageError(
+            f"Database version {imported_data.version} is not supported."
+            f" Supported versions: {settings.SUPPORTED_DB_VERSION}"
+        )
+
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = get_db_data(db)
+
+    common_aliases = set(imported_data.otp.keys()).intersection(data.otp.keys())
+    if imported_data.version != data.version:
+        raise click.UsageError("Database version migration is currently not supported")
+
+    if common_aliases:
+        common_aliases_str = ", ".join(common_aliases)
+        raise click.UsageError(
+            f"Your current and imported database have conflicting aliases: {common_aliases_str}."
+            " Consider renaming them in your current database, using `otp mv`, before the import."
+        )
+
+    data.otp |= imported_data.otp
+    db.write(data)
 
 
 # TODO(khanek) Move to separate module
@@ -266,29 +297,30 @@ def get_alias_from_uri(uri: str) -> AliasSchema:
     )
 
 
-# TODO(khanek) Move to separate module
-def create_alias(
-    otp_type: OTPType, label: str, issuer: str, secret: str, params: OTPParams
-) -> AliasSchema:
-    return create_alias_schema(
-        otp_type=otp_type,
-        label=label,
-        issuer=issuer,
-        secret=secret,
-        digits_count=settings.DB_DEFAULT_DIGITS_COUNT,
-        hash_algorithm=settings.DB_HASH_ALGORITHM,
-        params=params,
-    )
-
-
 @otp.command(help="Add the new secret as the specified ALIAS.")
 @click.argument("alias")
 @click.option("uri", "-u", "--uri", is_flag=True)
 @click.option("label", "-l", "--label")
-@click.option("period", "-p", "--period", type=click.INT)
-@click.option("counter", "-c", "--counter", type=click.INT)
+@click.option(
+    "period",
+    "-p",
+    "--period",
+    type=click.INT,
+    show_default=True,
+    default=settings.DEFAULT_TIME_STEP_SECONDS,
+)
+@click.option(
+    "counter", "-c", "--counter", type=click.INT, show_default=True, default=0
+)
 @click.option("issuer", "-i", "--issuer")
-@click.option("otp_type", "-t", "--otp-type", type=click.Choice(OTPType))
+@click.option(
+    "otp_type",
+    "-t",
+    "--otp-type",
+    type=click.Choice(OTPType),
+    show_default=True,
+    default=OTPType.TOTP.value,
+)
 @click.pass_context
 def add(
     ctx: click.Context,
@@ -312,8 +344,6 @@ def add(
             {
                 "-u, --uri": uri,
                 "-l, --label": label,
-                "-p, --period": period,
-                "-c, --counter": counter,
                 "-i, --issuer": issuer,
                 "-t, --otp-type": otp_type,
             }
@@ -334,12 +364,14 @@ def add(
             if otp_type == OTPType.TOTP
             else {"counter": counter}
         )
-        alias_data = create_alias(
+        alias_data = create_alias_schema(
             otp_type=otp_type,
             label=label,
             issuer=issuer,
             secret=input_secret,
-            params=get_params_by_type(otp_type)(**params),
+            digits_count=settings.DEFAULT_DIGITS_COUNT,
+            hash_algorithm=settings.DEFAULT_HASH_ALGORITHM,
+            params=params,
         )
 
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
@@ -348,6 +380,20 @@ def add(
     db.write(data)
     if not quiet:
         click.echo(f"{alias} added")
+
+
+@otp.command("mv", help="Rename the specified ALIAS.")
+@click.argument("old_alias")
+@click.argument("new_alias")
+@click.pass_context
+def rename(ctx: click.Context, old_alias: str, new_alias: str):
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = db.read()
+    try:
+        data.otp[new_alias] = data.otp.pop(old_alias)
+        db.write(data)
+    except KeyError:
+        raise click.UsageError(f"Alias: {old_alias} does not exist")
 
 
 def main():
