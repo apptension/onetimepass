@@ -7,7 +7,8 @@ import typing
 from pydantic import BaseModel
 from pydantic import validator
 
-from onetimepass.settings import DEFAULT_DB_VERSION
+from onetimepass import settings
+from onetimepass.db import exceptions
 
 
 """
@@ -92,9 +93,15 @@ class DatabaseSchema(BaseModel):
     otp: typing.Union[dict[str, AliasSchema], EmptyDict]
     version: str
 
+    @validator("version")
+    def supported_version(cls, v):
+        if v not in settings.SUPPORTED_DB_VERSION:
+            raise exceptions.DBUnsupportedVersion(v)
+        return v
+
     @classmethod
     def initialize(cls) -> DatabaseSchema:
-        return cls(otp=EmptyDict(), version=DEFAULT_DB_VERSION)
+        return cls(otp=EmptyDict(), version=settings.DEFAULT_DB_VERSION)
 
     def add_totp_alias(
         self,
@@ -114,3 +121,19 @@ class DatabaseSchema(BaseModel):
                 initial_time=initial_time, time_step_seconds=time_step_seconds,
             ),
         )
+
+    def merge(self, other: DatabaseSchema):
+        if other.version != self.version:
+            raise exceptions.DBUnsupportedMigration(
+                "Database version migration is currently not supported"
+            )
+
+        common_aliases = set(other.otp.keys()).intersection(self.otp.keys())
+        if common_aliases:
+            common_aliases_str = ", ".join(common_aliases)
+            raise exceptions.DBMergeConflict(
+                f"There are conflicting aliases between the current and imported database: {common_aliases_str}."
+                " Consider renaming them in the current database, using `otp mv`, before the import."
+            )
+
+        self.otp |= other.otp
