@@ -117,7 +117,7 @@ $ pdm run otp show -w <seconds> <alias>
 This will accept the _seconds_ of tolerance (if the remaining time of the current code to be valid is less than
 _seconds_, the app will wait, otherwise it will show the current code).
 
-![](https://j.gifs.com/pZXlmr.gif)
+![](docs/wait-for-next-otp.gif)
 
 The value returned by the command can be used to copy it straight to the clipboard or be otherwise automated.
 
@@ -126,7 +126,7 @@ Show all codes (using external watcher):
 $ watch -c -p -n 1 pdm run otp show-all
 ```
 
-![](https://j.gifs.com/oZ6kPz.gif "Showing all codes with watcher")
+![](docs/watch-show-all.gif)
 
 ### Database import/export
 
@@ -150,4 +150,4 @@ $ pdm run bash
 $ eval "$(_OTP_COMPLETE=bash_source otp)"
 ```
 
-![](docs/otp-shell-completion.png "Shell Completion")
+![](docs/otp-shell-completion.png)

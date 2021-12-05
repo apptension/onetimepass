@@ -8,7 +8,9 @@ repos:
         args: [--markdown-linebreak-ext=md]
     -   id: end-of-file-fixer
     -   id: check-yaml
+    # In the future, this should be switched to some persistent external storage
     -   id: check-added-large-files
+        args: ['--maxkb=1000']
 -   repo: https://github.com/psf/black
     rev: 19.10b0
     hooks:
