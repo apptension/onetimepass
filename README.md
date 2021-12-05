@@ -63,7 +63,7 @@ This of course won't work if you don't use the keychain integration.
 
 `onetimepass` identifies the added OTP codes via the user-specified _aliases_, which should be short, easy-to-remember names.
 
-`onetimepass` allows you to add new alias in two ways, either by specyfing all the parameters manually, using `add hotp` or `add totp` commands (depending on which type of the OTP you want to add), or by providing the [de facto standard URI](https://github.com/google/google-authenticator/wiki/Key-Uri-Format) invented by the Google.
+`onetimepass` allows you to add new alias in two ways, either by specifying all the parameters manually, using `add hotp` or `add totp` commands (depending on which type of the OTP you want to add), or by providing the [de facto standard URI](https://github.com/google/google-authenticator/wiki/Key-Uri-Format) invented by the Google.
 
 #### Adding via URI (command will aks interactively for the URI)
 ```console
