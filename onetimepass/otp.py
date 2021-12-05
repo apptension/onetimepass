@@ -139,35 +139,48 @@ def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
         alias_data = data.otp[alias]
     except KeyError:
         raise ClickUsageError(f"Alias: {alias} does not exist")
-    if wait:
-        remaining_seconds = algorithm.get_seconds_remaining(
-            algorithm.TOTPParameters(
-                secret=alias_data.secret.encode(),
-                digits_count=alias_data.digits_count,
-                hash_algorithm=alias_data.hash_algorithm,
-                time_step_seconds=alias_data.params.time_step_seconds,
+    if alias_data.otp_type == OTPType.TOTP:
+        if wait:
+            remaining_seconds = algorithm.get_seconds_remaining(
+                algorithm.TOTPParameters(
+                    secret=alias_data.secret.encode(),
+                    digits_count=alias_data.digits_count,
+                    hash_algorithm=alias_data.hash_algorithm,
+                    time_step_seconds=alias_data.params.time_step_seconds,
+                )
             )
+            if remaining_seconds < wait:
+                with Console().status("Waiting for the next OTP..."):
+                    time.sleep(remaining_seconds)
+        # Reinitialize parameters to get valid result
+        params = algorithm.TOTPParameters(
+            secret=alias_data.secret.encode(),
+            digits_count=alias_data.digits_count,
+            hash_algorithm=alias_data.hash_algorithm,
+            time_step_seconds=alias_data.params.time_step_seconds,
         )
-        if remaining_seconds < wait:
-            with Console().status("Waiting for the next OTP..."):
-                time.sleep(remaining_seconds)
-    # Reinitialize parameters to get valid result
-    params = algorithm.TOTPParameters(
-        secret=alias_data.secret.encode(),
-        digits_count=alias_data.digits_count,
-        hash_algorithm=alias_data.hash_algorithm,
-        time_step_seconds=alias_data.params.time_step_seconds,
-    )
-    if minimum_verbose:
-        click.echo(f"{algorithm.totp(params):0{params.digits_count}}")
+        if minimum_verbose:
+            click.echo(f"{algorithm.totp(params):0{params.digits_count}}")
+        else:
+            echo_alias(
+                alias,
+                algorithm.totp(params),
+                algorithm.get_seconds_remaining(params),
+                ctx.obj["color"],
+                params.digits_count,
+            )
+    elif alias_data.otp_type == OTPType.HOTP:
+        params = algorithm.HOTPParameters(
+            secret=alias_data.secret.encode(),
+            digits_count=alias_data.digits_count,
+            hash_algorithm=alias_data.hash_algorithm,
+            counter=alias_data.params.counter,
+        )
+        echo_hotp_alias(alias, algorithm.hotp(params), alias_data.digits_count)
+        alias_data.params.counter += 1
+        db.write(data)
     else:
-        echo_alias(
-            alias,
-            algorithm.totp(params),
-            algorithm.get_seconds_remaining(params),
-            ctx.obj["color"],
-            params.digits_count,
-        )
+        raise NotImplementedError
 
 
 @otp.command(help="Print the one-time password for all ALIASes.")
