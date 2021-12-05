@@ -297,7 +297,7 @@ def add(ctx: click.Context):
     pass
 
 
-@add.command("uri", help="Add the new secret as the specified ALIAS.")
+@add.command("uri", help="Add the new secret from URI as the specified ALIAS.")
 @click.argument("alias")
 @click.pass_context
 def add_uri(ctx: click.Context, alias: str):
@@ -328,7 +328,7 @@ def add_uri(ctx: click.Context, alias: str):
         click.echo(f"{alias} added")
 
 
-@add.command("hotp")
+@add.command("hotp", help="Add the new HOTP secret as the specified ALIAS.")
 @click.argument("alias")
 @click.option("label", "-l", "--label")
 @click.option("issuer", "-i", "--issuer")
@@ -394,7 +394,7 @@ def add_hotp(
         click.echo(f"{alias} added")
 
 
-@add.command("totp")
+@add.command("totp", help="Add the new TOTP secret as the specified ALIAS.")
 @click.argument("alias")
 @click.option("label", "-l", "--label")
 @click.option("issuer", "-i", "--issuer")
