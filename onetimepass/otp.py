@@ -1,16 +1,17 @@
 import binascii
-import click
-import cryptography.fernet
 import datetime
 import enum
 import functools
 import json
 import pathlib
-import pydantic
 import time
-from rich.console import Console
 from typing import Dict
 from typing import Optional
+
+import click
+import cryptography.fernet
+import pydantic
+from rich.console import Console
 
 from onetimepass import algorithm
 from onetimepass import master_key
