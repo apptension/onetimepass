@@ -7,6 +7,7 @@ import typing
 from pydantic import BaseModel
 from pydantic import validator
 
+from onetimepass import settings
 from onetimepass.settings import DB_VERSION
 
 
@@ -61,15 +62,24 @@ class TOTPParams(BaseModel):
     time_step_seconds: int
 
 
+OTPParams = typing.Union[HOTPParams, TOTPParams]
+
+
 class OTPType(str, enum.Enum):
     HOTP = "HOTP"
     TOTP = "TOTP"
 
 
+class OTPAlgorithm(str, enum.Enum):
+    SHA1 = "sha1"
+    SHA256 = "sha256"
+    SHA512 = "sha512"
+
+
 class AliasSchema(BaseModel):
     secret: str
     digits_count: int
-    hash_algorithm: str
+    hash_algorithm: OTPAlgorithm
     otp_type: OTPType
     params: typing.Union[
         HOTPParams, TOTPParams
@@ -96,17 +106,24 @@ class DatabaseSchema(BaseModel):
     def initialize(cls) -> DatabaseSchema:
         return cls(otp=EmptyDict(), version=DB_VERSION)
 
+    def add_alias(self, name: str, data: AliasSchema):
+        self.otp[name] = data
+
     def add_totp_alias(
         self,
         name: str,
+        label: str,
+        issuer: str,
         secret: str,
         digits_count: int,
-        hash_algorithm: str,
+        hash_algorithm: OTPAlgorithm,
         initial_time: datetime.datetime,
-        time_step_seconds: int = 30,
+        time_step_seconds: int = settings.DB_DEFAULT_TIME_STEP_SECONDS,
     ):
         self.otp[name] = AliasSchema(
             secret=secret,
+            label=label,
+            issuer=issuer,
             digits_count=digits_count,
             hash_algorithm=hash_algorithm,
             otp_type=OTPType.TOTP,
@@ -114,3 +131,29 @@ class DatabaseSchema(BaseModel):
                 initial_time=initial_time, time_step_seconds=time_step_seconds,
             ),
         )
+
+
+def get_params_by_type(
+    typ: OTPType,
+) -> typing.Type[HOTPParams] | typing.Type[TOTPParams]:
+    return {OTPType.HOTP: HOTPParams, OTPType.TOTP: TOTPParams,}[typ]
+
+
+def create_alias_schema(
+    otp_type: OTPType,
+    label: str,
+    issuer: str,
+    secret: str,
+    digits_count: int,
+    hash_algorithm: str,
+    params: OTPParams,
+):
+    return AliasSchema(
+        otp_type=otp_type,
+        label=label,
+        issuer=issuer,
+        secret=secret,
+        digits_count=digits_count,
+        hash_algorithm=hash_algorithm,
+        params=params,
+    )

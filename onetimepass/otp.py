@@ -2,17 +2,22 @@ import datetime
 import enum
 import functools
 import pathlib
-import secrets
 from typing import Dict
 
 import click
 
 from onetimepass import algorithm
+from onetimepass import otp_auth_uri
 from onetimepass import settings
 from onetimepass.db import BaseDB
 from onetimepass.db import DatabaseSchema
 from onetimepass.db import DBDoesNotExist
 from onetimepass.db import JSONEncryptedDB
+from onetimepass.db.models import AliasSchema
+from onetimepass.db.models import create_alias_schema
+from onetimepass.db.models import get_params_by_type
+from onetimepass.db.models import OTPParams
+from onetimepass.db.models import OTPType
 from onetimepass.exceptions import UnhandledFormatException
 
 
@@ -47,6 +52,10 @@ def echo_alias(alias: str, code: int, seconds_remaining: int, color: bool):
                 seconds_remaining_str, fg="red", bold=True
             )
     click.echo(f"{alias}: {code} {seconds_remaining_str}")
+
+
+def echo_hotp_alias(alias: str, code: int):
+    click.echo(f"{alias}: {code}")
 
 
 def handle_conflicting_options(options: Dict[str, bool]):
@@ -101,19 +110,37 @@ def show(ctx: click.Context, alias: str):
 def show_all(ctx: click.Context):
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = get_db_data(db)
+    need_db_save = False
     for alias, alias_data in data.otp.items():
-        params = algorithm.TOTPParameters(
-            secret=alias_data.secret.encode(),
-            digits_count=alias_data.digits_count,
-            hash_algorithm=alias_data.hash_algorithm,
-            time_step_seconds=alias_data.params.time_step_seconds,
-        )
-        echo_alias(
-            alias,
-            algorithm.totp(params),
-            algorithm.get_seconds_remaining(params),
-            ctx.obj["color"],
-        )
+        if alias_data.otp_type == OTPType.TOTP:
+            params = algorithm.TOTPParameters(
+                secret=alias_data.secret.encode(),
+                digits_count=alias_data.digits_count,
+                hash_algorithm=alias_data.hash_algorithm,
+                time_step_seconds=alias_data.params.time_step_seconds,
+            )
+            echo_alias(
+                alias,
+                algorithm.totp(params),
+                algorithm.get_seconds_remaining(params),
+                ctx.obj["color"],
+            )
+        elif alias_data.otp_type == OTPType.HOTP:
+            params = algorithm.HOTPParameters(
+                secret=alias_data.secret.encode(),
+                digits_count=alias_data.digits_count,
+                hash_algorithm=alias_data.hash_algorithm,
+                counter=alias_data.params.counter,
+            )
+            echo_hotp_alias(
+                alias, algorithm.hotp(params),
+            )
+            alias_data.params.counter += 1
+            need_db_save = True
+        else:
+            raise NotImplementedError
+    if need_db_save:
+        db.write(data)
 
 
 @otp.command(help="Initialize the master key and local database.")
@@ -225,31 +252,60 @@ def import_(ctx: click.Context, file, format_: str):
     pass
 
 
+# TODO(khanek) Move to separate module
+def get_alias_from_uri(uri: str) -> AliasSchema:
+    uri_parsed = otp_auth_uri.parse(uri)
+    return create_alias_schema(
+        otp_type=uri_parsed.otp_type,
+        label=uri_parsed.label,
+        issuer=uri_parsed.issuer,
+        secret=uri_parsed.secret,
+        digits_count=uri_parsed.digits,
+        hash_algorithm=uri_parsed.algorithm,
+        params=uri_parsed.params,
+    )
+
+
+# TODO(khanek) Move to separate module
+def create_alias(
+    otp_type: OTPType, label: str, issuer: str, secret: str, params: OTPParams
+) -> AliasSchema:
+    return create_alias_schema(
+        otp_type=otp_type,
+        label=label,
+        issuer=issuer,
+        secret=secret,
+        digits_count=settings.DB_DEFAULT_DIGITS_COUNT,
+        hash_algorithm=settings.DB_HASH_ALGORITHM,
+        params=params,
+    )
+
+
 @otp.command(help="Add the new secret as the specified ALIAS.")
 @click.argument("alias")
 @click.option("uri", "-u", "--uri", is_flag=True)
 @click.option("label", "-l", "--label")
 @click.option("period", "-p", "--period", type=click.INT)
+@click.option("counter", "-c", "--counter", type=click.INT)
 @click.option("issuer", "-i", "--issuer")
+@click.option("otp_type", "-t", "--otp-type", type=click.Choice(OTPType))
 @click.pass_context
 def add(
-    ctx: click.Context, alias: str, uri: bool, label: str, period: int, issuer: str
+    ctx: click.Context,
+    alias: str,
+    uri: bool,
+    label: str,
+    period: int,
+    counter: int,
+    issuer: str,
+    otp_type: OTPType,
 ):
-    # TODO(khanek) POC
+    quiet = ctx.obj["quiet"]
+
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = get_db_data(db)
-    data.add_totp_alias(
-        name=alias,
-        secret=secrets.token_hex(),
-        digits_count=6,
-        hash_algorithm="sha1",
-        initial_time=datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc),
-        time_step_seconds=30,
-    )
-    db.write(data)
-    return  # TODO(khanek) Remove after POC
-
-    quiet = ctx.obj["quiet"]
+    if alias in data.otp:
+        raise click.UsageError(f"Alias {alias} exists. Consider renaming it")
 
     if uri:
         handle_conflicting_options(
@@ -257,15 +313,39 @@ def add(
                 "-u, --uri": uri,
                 "-l, --label": label,
                 "-p, --period": period,
+                "-c, --counter": counter,
                 "-i, --issuer": issuer,
+                "-t, --otp-type": otp_type,
             }
         )
         input_uri = click.prompt("Enter URI", confirmation_prompt=True, hide_input=True)
+        alias_data = get_alias_from_uri(input_uri)
     else:
         input_secret = click.prompt(
             "Enter secret", confirmation_prompt=True, hide_input=True
         )
+        params = (
+            {
+                "initial_time": datetime.datetime.fromtimestamp(
+                    0, tz=datetime.timezone.utc
+                ),
+                "time_step_seconds": period,
+            }
+            if otp_type == OTPType.TOTP
+            else {"counter": counter}
+        )
+        alias_data = create_alias(
+            otp_type=otp_type,
+            label=label,
+            issuer=issuer,
+            secret=input_secret,
+            params=get_params_by_type(otp_type)(**params),
+        )
 
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = get_db_data(db)
+    data.add_alias(alias, alias_data)
+    db.write(data)
     if not quiet:
         click.echo(f"{alias} added")
 
