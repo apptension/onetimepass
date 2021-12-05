@@ -278,8 +278,7 @@ def rename(ctx: click.Context, old_alias: str, new_alias: str):
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = db.read()
     try:
-        data.otp[new_alias] = data.otp[old_alias]
-        del data.otp[old_alias]
+        data.otp[new_alias] = data.otp.pop(old_alias)
         db.write(data)
     except KeyError:
         raise click.UsageError(f"Alias: {old_alias} does not exist")
