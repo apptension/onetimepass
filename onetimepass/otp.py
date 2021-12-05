@@ -1,3 +1,4 @@
+import datetime
 import enum
 import functools
 import pathlib
@@ -12,6 +13,7 @@ from onetimepass.db import BaseDB
 from onetimepass.db import DatabaseSchema
 from onetimepass.db import DBDoesNotExist
 from onetimepass.db import JSONEncryptedDB
+from onetimepass.exceptions import UnhandledFormatException
 
 
 def get_db_data(db: BaseDB) -> DatabaseSchema:
@@ -206,15 +208,20 @@ EXPORT_FORMAT_OPTION = click.option(
 @otp.command("export", help="Export the local database to STDOUT.")
 @EXPORT_FORMAT_OPTION
 @click.pass_context
-def export(ctx: click.Context, format_: list[str]):
-    pass
+def export(ctx: click.Context, format_: str):
+    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    data = get_db_data(db)
+    if format_ == ExportFormat.JSON:
+        click.echo(data.json())
+        return None
+    raise UnhandledFormatException(format_)
 
 
 @otp.command("import", help="Import the local database from FILE.")
 @click.argument("file", type=click.File())
 @EXPORT_FORMAT_OPTION
 @click.pass_context
-def import_(ctx: click.Context, file, format_: list[str]):
+def import_(ctx: click.Context, file, format_: str):
     pass
 
 
@@ -236,7 +243,7 @@ def add(
         secret=secrets.token_hex(),
         digits_count=6,
         hash_algorithm="sha1",
-        initial_time=0,
+        initial_time=datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc),
         time_step_seconds=30,
     )
     db.write(data)
