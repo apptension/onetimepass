@@ -306,7 +306,7 @@ def add_uri(ctx: click.Context, alias: str):
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = get_db_data(db)
     if alias in data.otp:
-        raise click.UsageError(f"Alias {alias} exists. Consider renaming it")
+        raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
 
     input_uri = click.prompt("Enter URI", confirmation_prompt=True, hide_input=True)
     uri_parsed = otp_auth_uri.parse(input_uri)
@@ -374,7 +374,7 @@ def add_hotp(
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = get_db_data(db)
     if alias in data.otp:
-        raise click.UsageError(f"Alias {alias} exists. Consider renaming it")
+        raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
 
     alias_data = AliasSchema(
         otp_type=OTPType.HOTP,
@@ -448,7 +448,7 @@ def add_totp(
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = get_db_data(db)
     if alias in data.otp:
-        raise click.UsageError(f"Alias {alias} exists. Consider renaming it")
+        raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
 
     alias_data = AliasSchema(
         otp_type=OTPType.TOTP,
