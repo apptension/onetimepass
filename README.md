@@ -9,9 +9,11 @@
 OTP serves as additional protection in case of password leaks.
 
 `onetimepass` allows you to manage OTP codes and generate a master key.
-The master key allows the base to be decrypted and encrypted. Make sure to keep it in a safe place, otherwise it will not be possible to recover the data.
+The master key allows the base to be decrypted and encrypted. Make sure to keep it in a safe place, otherwise it will
+not be possible to recover the data.
 
-`onetimepass` supports as an optional dependency the integration with the system keychain (cross-platform) in which the application saves the master key.
+`onetimepass` supports as an optional dependency the integration with the system keychain (cross-platform) in which the
+application saves the master key.
 
 ## Requirements
 
@@ -38,7 +40,8 @@ $ pdm install -G keyring
 At the very beginning, the database must be initialised, which additionally creates the master key.
 It will save it to the keychain if this has been installed.
 
-By default, it will print the generated key to the STDOUT. You need this behavior if you don't use the optional keychain integration.
+By default, it will print the generated key to the STDOUT. You need this behavior if you don't use the optional keychain
+integration.
 
 If you do, you can pass the `-q, --quiet` option to silence the output.
 
@@ -46,7 +49,8 @@ If you do, you can pass the `-q, --quiet` option to silence the output.
 
 ### Keychain integration
 
-The application will automatically detect if you have the keychain integration installed, however, if you want to force enable/disable it, you can by using respectively the `-k, --keyring` and `-K, --no-keyring` options.
+The application will automatically detect if you have the keychain integration installed, however, if you want to force
+enable/disable it, you can by using respectively the `-k, --keyring` and `-K, --no-keyring` options.
 
 Although, if you don't have the keychain integration installed, enabling it won't work:
 ![](docs/keyring-not-installed.png)
@@ -54,7 +58,8 @@ Although, if you don't have the keychain integration installed, enabling it won'
 
 ### Print the master key
 
-It is possible to print the current master key stored in the keychain (if you need this for e.g. migrating the app to the different device).
+It is possible to print the current master key stored in the keychain (if you need this for e.g. migrating the app to
+the different device).
 
 This of course won't work if you don't use the keychain integration.
 
@@ -62,9 +67,12 @@ This of course won't work if you don't use the keychain integration.
 
 ### Adding new OTP alias
 
-`onetimepass` identifies the added OTP codes via the user-specified _aliases_, which should be short, easy-to-remember names.
+`onetimepass` identifies the added OTP codes via the user-specified _aliases_, which should be short, easy-to-remember
+names.
 
-`onetimepass` allows you to add new alias in two ways, either by specifying all the parameters manually, using `add hotp` or `add totp` commands (depending on which type of the OTP you want to add), or by providing the [de facto standard URI](https://github.com/google/google-authenticator/wiki/Key-Uri-Format) invented by the Google.
+`onetimepass` allows you to add new alias in two ways, either by specifying all the parameters manually,
+using `add hotp` or `add totp` commands (depending on which type of the OTP you want to add), or by providing
+the [de facto standard URI](https://github.com/google/google-authenticator/wiki/Key-Uri-Format) invented by the Google.
 
 #### Adding via URI (command will aks interactively for the URI)
 ```console
@@ -145,7 +153,8 @@ $ watch -c -p -n 1 pdm run otp show-all
 
 ### Database import/export
 
-In case you want to migrate the application to the different device, you can export the local database to the format of choice (currently only the `json` is supported) and then import it.
+In case you want to migrate the application to the different device, you can export the local database to the format of
+choice (currently only the `json` is supported) and then import it.
 
 ![](docs/database-import.png)
 
