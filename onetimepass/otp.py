@@ -164,7 +164,7 @@ def key(ctx: click.Context):
     click.echo(key_)
 
 
-@otp.command(help="Remove the secret for the specified ALIAS.")
+@otp.command("rm", help="Remove the secret for the specified ALIAS.")
 @click.argument("alias")
 @click.confirmation_option(prompt="Are you sure?")
 @click.pass_context
@@ -270,7 +270,7 @@ def add(
         click.echo(f"{alias} added")
 
 
-@otp.command(help="Rename the specified ALIAS.")
+@otp.command("mv", help="Rename the specified ALIAS.")
 @click.argument("old_alias")
 @click.argument("new_alias")
 @click.pass_context
