@@ -4,15 +4,20 @@ import functools
 import json
 import pathlib
 from typing import Dict
+from typing import Optional
 
 import click
+import pydantic
 
 from onetimepass import algorithm
 from onetimepass import otp_auth_uri
 from onetimepass import settings
 from onetimepass.db import BaseDB
 from onetimepass.db import DatabaseSchema
+from onetimepass.db import DBCorruption
 from onetimepass.db import DBDoesNotExist
+from onetimepass.db import DBMergeConflict
+from onetimepass.db import DBUnsupportedVersion
 from onetimepass.db import JSONEncryptedDB
 from onetimepass.db.models import AliasSchema
 from onetimepass.db.models import create_alias_schema
@@ -23,13 +28,22 @@ from onetimepass.db.models import TOTPParams
 from onetimepass.exceptions import UnhandledFormatException
 
 
+class ClickUsageError(click.UsageError):
+    """Wrapper on the `click.UsageError that automatically wraps the error message"""
+
+    def __init__(self, message: str, ctx: Optional[click.Context] = None) -> None:
+        super().__init__(click.wrap_text(str(message)), ctx)
+
+
 def get_db_data(db: BaseDB) -> DatabaseSchema:
     try:
         return db.read()
     except DBDoesNotExist:
-        raise click.UsageError(
+        raise ClickUsageError(
             "Database does not exist. Try to initialize it first `opt init`"
         )
+    except pydantic.ValidationError as e:
+        raise DBCorruption from e
 
 
 def get_default_initial_time():
@@ -68,7 +82,7 @@ def handle_conflicting_options(options: Dict[str, bool]):
     conflicting_options = {k: v for k, v in options.items() if v}
     if len(conflicting_options) > 1:
         options_list = "; ".join([str(k) for k in conflicting_options])
-        raise click.UsageError(f"conflicting options: {options_list}")
+        raise ClickUsageError(f"conflicting options: {options_list}")
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -96,7 +110,7 @@ def show(ctx: click.Context, alias: str):
     try:
         alias_data = data.otp[alias]
     except KeyError:
-        raise click.UsageError(f"Alias: {alias} does not exist")
+        raise ClickUsageError(f"Alias: {alias} does not exist")
     params = algorithm.TOTPParameters(
         secret=alias_data.secret.encode(),
         digits_count=alias_data.digits_count,
@@ -161,7 +175,7 @@ def init(ctx: click.Context):
         )
 
         if JSONEncryptedDB.exists(settings.DB_PATH):
-            raise click.UsageError(
+            raise ClickUsageError(
                 f"The local database `{settings.DB_PATH}` is already initialized"
             )
 
@@ -190,9 +204,9 @@ def key(ctx: click.Context):
         if KEYRING_INSTALLED:
             key_ = keyring_get()
         else:
-            raise click.UsageError("keyring not installed")
+            raise ClickUsageError("keyring not installed")
     else:
-        raise click.UsageError("cannot show key, keyring disabled, try -k, --keyring")
+        raise ClickUsageError("cannot show key, keyring disabled, try -k, --keyring")
 
     click.echo(key_)
 
@@ -208,7 +222,7 @@ def delete(ctx: click.Context, alias: str):
     try:
         del data.otp[alias]
     except KeyError:
-        raise click.UsageError(f"Alias: {alias} does not exist")
+        raise ClickUsageError(f"Alias: {alias} does not exist")
     db.write(data)
 
     if not quiet:
@@ -259,39 +273,25 @@ def import_(ctx: click.Context, file, format_: str):
         try:
             imported_data = json.load(file)
         except json.JSONDecodeError as e:
-            raise click.UsageError(f"Invalid JSON: {e}")
+            raise ClickUsageError(f"Invalid JSON: {e}")
     else:
         raise UnhandledFormatException(format_)
-    imported_data = DatabaseSchema(**imported_data)
-
-    if imported_data.version not in settings.SUPPORTED_DB_VERSION:
-        raise click.UsageError(
-            f"Database version {imported_data.version} is not supported."
-            f" Supported versions: {settings.SUPPORTED_DB_VERSION}"
-        )
+    try:
+        imported_data = DatabaseSchema(**imported_data)
+    except DBUnsupportedVersion as e:
+        raise ClickUsageError(e)
 
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = get_db_data(db)
 
-    common_aliases = set(imported_data.otp.keys()).intersection(data.otp.keys())
-    if imported_data.version != data.version:
-        raise click.UsageError("Database version migration is currently not supported")
-
-    if common_aliases:
-        common_aliases_str = ", ".join(common_aliases)
-        raise click.UsageError(
-            f"Your current and imported database have conflicting aliases: {common_aliases_str}."
-            " Consider renaming them in your current database, using `otp mv`, before the import."
-        )
-
-    data.otp |= imported_data.otp
+    try:
+        data.merge(imported_data)
+    except DBMergeConflict as e:
+        raise ClickUsageError(click.wrap_text(str(e)))
     db.write(data)
 
 
-@otp.group(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    help="Add the new secret as the specified ALIAS.",
-)
+@otp.group(help="Add the new secret as the specified ALIAS.")
 @click.pass_context
 def add(ctx: click.Context):
     pass
@@ -479,7 +479,7 @@ def rename(ctx: click.Context, old_alias: str, new_alias: str):
         data.otp[new_alias] = data.otp.pop(old_alias)
         db.write(data)
     except KeyError:
-        raise click.UsageError(f"Alias: {old_alias} does not exist")
+        raise ClickUsageError(f"Alias: {old_alias} does not exist")
 
 
 def main():
