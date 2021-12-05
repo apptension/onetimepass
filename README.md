@@ -99,7 +99,7 @@ To omit the interactive confirmation (⚠️ **unsafe!**), pas the `--yes` optio
 
 ### Showing OTP code
 
-Show single OTP by alias
+#### Show single OTP identified by alias
 
 ```console
 $ pdm run otp show <alias>
@@ -119,9 +119,24 @@ _seconds_, the app will wait, otherwise it will show the current code).
 
 ![](docs/wait-for-next-otp.gif)
 
-The value returned by the command can be used to copy it straight to the clipboard or be otherwise automated.
+You can easily automate it even more:
 
-Show all codes (using external watcher):
+```console
+$ pdm run otp show -w 10 <alias> | cut -d' ' -f2 | pbcopy; alert
+```
+
+To extract the code when it's ready, then copy it to the system clipboard (`pbcopy` for macOS, `xclip` for Linux), and
+send the system notification to yourself when it's all finished (assuming you have the `alert` alias configured,
+available by default e.g. on Ubuntu Linux).
+
+#### Show all codes
+
+```console
+$ pdm run otp show-all
+```
+
+You can emulate the view known from the Google Authenticator (list of all the codes, refreshed dynamically) by wrapping
+the application in the external watcher (e.g. `watch`):
 ```console
 $ watch -c -p -n 1 pdm run otp show-all
 ```
