@@ -111,8 +111,15 @@ def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool):
     type=click.IntRange(min=1, max=29),
     help="Wait for next code if remaining time is less than x seconds",
 )
+@click.option(
+    "minimum_verbose",
+    "-m",
+    "--minimum-verbose",
+    is_flag=True,
+    help="Shows only OTP code",
+)
 @click.pass_context
-def show(ctx: click.Context, alias: str, wait: int):
+def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
     db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
     data = db.read()
     try:
@@ -137,12 +144,15 @@ def show(ctx: click.Context, alias: str, wait: int):
         hash_algorithm=alias_data.hash_algorithm,
         time_step_seconds=alias_data.params.time_step_seconds,
     )
-    echo_alias(
-        alias,
-        algorithm.totp(params),
-        algorithm.get_seconds_remaining(params),
-        ctx.obj["color"],
-    )
+    if minimum_verbose:
+        click.echo(algorithm.totp(params))
+    else:
+        echo_alias(
+            alias,
+            algorithm.totp(params),
+            algorithm.get_seconds_remaining(params),
+            ctx.obj["color"],
+        )
 
 
 @otp.command(help="Print the one-time password for all ALIASes.")
