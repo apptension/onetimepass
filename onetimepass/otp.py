@@ -4,12 +4,14 @@ import enum
 import functools
 import json
 import pathlib
+import time
 from typing import Dict
 from typing import Optional
 
 import click
 import cryptography.fernet
 import pydantic
+from rich.console import Console
 
 from onetimepass import algorithm
 from onetimepass import master_key
@@ -111,8 +113,22 @@ def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool):
 
 @otp.command(help="Print the one-time password for the specified ALIAS.")
 @click.argument("alias")
+@click.option(
+    "wait",
+    "-w",
+    "--wait-for-next",
+    type=click.IntRange(min=1, max=29),
+    help="Wait for next code if remaining time is less than x seconds",
+)
+@click.option(
+    "minimum_verbose",
+    "-m",
+    "--minimum-verbose",
+    is_flag=True,
+    help="Shows only OTP code",
+)
 @click.pass_context
-def show(ctx: click.Context, alias: str):
+def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
     keyring = ctx.obj["keyring_"]
 
     db = get_decrypted_db(keyring)
@@ -121,18 +137,34 @@ def show(ctx: click.Context, alias: str):
         alias_data = data.otp[alias]
     except KeyError:
         raise ClickUsageError(f"Alias: {alias} does not exist")
+    if wait:
+        remaining_seconds = algorithm.get_seconds_remaining(
+            algorithm.TOTPParameters(
+                secret=alias_data.secret.encode(),
+                digits_count=alias_data.digits_count,
+                hash_algorithm=alias_data.hash_algorithm,
+                time_step_seconds=alias_data.params.time_step_seconds,
+            )
+        )
+        if remaining_seconds < wait:
+            with Console().status("Waiting for the next OTP..."):
+                time.sleep(remaining_seconds)
+    # Reinitialize parameters to get valid result
     params = algorithm.TOTPParameters(
         secret=alias_data.secret.encode(),
         digits_count=alias_data.digits_count,
         hash_algorithm=alias_data.hash_algorithm,
         time_step_seconds=alias_data.params.time_step_seconds,
     )
-    echo_alias(
-        alias,
-        algorithm.totp(params),
-        algorithm.get_seconds_remaining(params),
-        ctx.obj["color"],
-    )
+    if minimum_verbose:
+        click.echo(algorithm.totp(params))
+    else:
+        echo_alias(
+            alias,
+            algorithm.totp(params),
+            algorithm.get_seconds_remaining(params),
+            ctx.obj["color"],
+        )
 
 
 @otp.command(help="Print the one-time password for all ALIASes.")
