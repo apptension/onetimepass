@@ -74,18 +74,20 @@ def get_default_initial_time():
     return datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
 
 
-def echo_alias(alias: str, code: int, seconds_remaining: int, color: bool):
+def echo_alias(
+    alias: str, code: int, seconds_remaining: int, color: bool, digits_count: int
+):
     seconds_remaining_str = f"{seconds_remaining:0>2}s"
     if color:
         if seconds_remaining <= 10:
             seconds_remaining_str = click.style(
                 seconds_remaining_str, fg="red", bold=True
             )
-    click.echo(f"{alias}: {code} {seconds_remaining_str}")
+    click.echo(f"{alias}: {code:0{digits_count}} {seconds_remaining_str}")
 
 
-def echo_hotp_alias(alias: str, code: int):
-    click.echo(f"{alias}: {code}")
+def echo_hotp_alias(alias: str, code: int, digits_count: int):
+    click.echo(f"{alias}: {code:0{digits_count}}")
 
 
 def handle_conflicting_options(options: Dict[str, bool]):
@@ -157,13 +159,14 @@ def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
         time_step_seconds=alias_data.params.time_step_seconds,
     )
     if minimum_verbose:
-        click.echo(algorithm.totp(params))
+        click.echo(f"{algorithm.totp(params):0{params.digits_count}}")
     else:
         echo_alias(
             alias,
             algorithm.totp(params),
             algorithm.get_seconds_remaining(params),
             ctx.obj["color"],
+            params.digits_count,
         )
 
 
@@ -188,6 +191,7 @@ def show_all(ctx: click.Context):
                 algorithm.totp(params),
                 algorithm.get_seconds_remaining(params),
                 ctx.obj["color"],
+                params.digits_count,
             )
         elif alias_data.otp_type == OTPType.HOTP:
             params = algorithm.HOTPParameters(
@@ -196,9 +200,7 @@ def show_all(ctx: click.Context):
                 hash_algorithm=alias_data.hash_algorithm,
                 counter=alias_data.params.counter,
             )
-            echo_hotp_alias(
-                alias, algorithm.hotp(params),
-            )
+            echo_hotp_alias(alias, algorithm.hotp(params), params.digits_count)
             alias_data.params.counter += 1
             need_db_save = True
         else:
