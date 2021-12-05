@@ -1,3 +1,4 @@
+import binascii
 import datetime
 import enum
 import functools
@@ -7,9 +8,11 @@ from typing import Dict
 from typing import Optional
 
 import click
+import cryptography.fernet
 import pydantic
 
 from onetimepass import algorithm
+from onetimepass import master_key
 from onetimepass import otp_auth_uri
 from onetimepass import settings
 from onetimepass.db import BaseDB
@@ -31,7 +34,9 @@ from onetimepass.exceptions import UnhandledFormatException
 class ClickUsageError(click.UsageError):
     """Wrapper on the `click.UsageError that automatically wraps the error message"""
 
-    def __init__(self, message: str, ctx: Optional[click.Context] = None) -> None:
+    def __init__(
+        self, message: str | Exception, ctx: Optional[click.Context] = None
+    ) -> None:
         super().__init__(click.wrap_text(str(message)), ctx)
 
 
@@ -42,26 +47,29 @@ def get_db_data(db: BaseDB) -> DatabaseSchema:
         raise ClickUsageError(
             "Database does not exist. Try to initialize it first `opt init`"
         )
+    except cryptography.fernet.InvalidToken:
+        raise ClickUsageError(
+            "Provided master key is different than the one used during the `otp init`"
+        )
     except pydantic.ValidationError as e:
         raise DBCorruption from e
 
 
+def get_decrypted_db(use_keyring: bool) -> JSONEncryptedDB:
+    try:
+        key_ = bytes(master_key.MasterKey(use_keyring=use_keyring))
+        try:
+            return JSONEncryptedDB(path=settings.DB_PATH, key=key_)
+        except binascii.Error as e:
+            raise master_key.InvalidMasterKeyFormat(
+                f"Provided master key is not a valid base64: {e}"
+            )
+    except master_key.BaseMasterKeyException as e:
+        raise ClickUsageError(e)
+
+
 def get_default_initial_time():
     return datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
-
-
-try:
-    import keyring  # noqa 'keyring' in the try block with 'except ImportError' should also be defined in the except block
-except ImportError:
-    KEYRING_INSTALLED = False
-else:
-    KEYRING_INSTALLED = True
-    KEYRING_PARAMS = {
-        "service_name": settings.KEYRING_SERVICE_NAME,
-        "username": settings.KEYRING_USERNAME,
-    }
-    keyring_set = functools.partial(keyring.set_password, **KEYRING_PARAMS)
-    keyring_get = functools.partial(keyring.get_password, **KEYRING_PARAMS)
 
 
 def echo_alias(alias: str, code: int, seconds_remaining: int, color: bool):
@@ -92,7 +100,7 @@ def handle_conflicting_options(options: Dict[str, bool]):
     "keyring_",
     "-k/-K",
     "--keyring/--no-keyring",
-    default=KEYRING_INSTALLED,
+    default=master_key.MasterKey.keyring_available(),
     show_default="True if keyring installed, False otherwise",
 )
 @click.pass_context
@@ -105,7 +113,9 @@ def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool):
 @click.argument("alias")
 @click.pass_context
 def show(ctx: click.Context, alias: str):
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    keyring = ctx.obj["keyring_"]
+
+    db = get_decrypted_db(keyring)
     data = db.read()
     try:
         alias_data = data.otp[alias]
@@ -128,7 +138,9 @@ def show(ctx: click.Context, alias: str):
 @otp.command(help="Print the one-time password for all ALIASes.")
 @click.pass_context
 def show_all(ctx: click.Context):
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    keyring = ctx.obj["keyring_"]
+
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     need_db_save = False
     for alias, alias_data in data.otp.items():
@@ -182,8 +194,8 @@ def init(ctx: click.Context):
         db = JSONEncryptedDB.initialize(settings.DB_PATH)
         key_ = db.key.decode()
 
-        if keyring_ and KEYRING_INSTALLED:
-            keyring_set(password=key_)
+        if keyring_:
+            key_ = master_key.MasterKey.create_in_keyring(key_)
 
         if not quiet:
             click.echo(key_)
@@ -197,17 +209,15 @@ def init(ctx: click.Context):
 @otp.command(help="Print the master key.")
 @click.pass_context
 def key(ctx: click.Context):
-    quiet = ctx.obj["quiet"]
     keyring_ = ctx.obj["keyring_"]
 
-    if keyring_:
-        if KEYRING_INSTALLED:
-            key_ = keyring_get()
-        else:
-            raise ClickUsageError("keyring not installed")
-    else:
+    if not keyring_:
         raise ClickUsageError("cannot show key, keyring disabled, try -k, --keyring")
 
+    try:
+        key_ = master_key.MasterKey(use_keyring=keyring_)
+    except master_key.BaseMasterKeyException as e:
+        ClickUsageError(e)
     click.echo(key_)
 
 
@@ -217,7 +227,9 @@ def key(ctx: click.Context):
 @click.pass_context
 def delete(ctx: click.Context, alias: str):
     quiet = ctx.obj["quiet"]
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    keyring = ctx.obj["keyring_"]
+
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     try:
         del data.otp[alias]
@@ -232,7 +244,9 @@ def delete(ctx: click.Context, alias: str):
 @otp.command("ls", help="List all added ALIASes.")
 @click.pass_context
 def list_(ctx: click.Context):
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    keyring = ctx.obj["keyring_"]
+
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     for alias in data.otp.keys():
         click.echo(alias)
@@ -256,7 +270,9 @@ EXPORT_FORMAT_OPTION = click.option(
 @EXPORT_FORMAT_OPTION
 @click.pass_context
 def export(ctx: click.Context, format_: str):
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    keyring = ctx.obj["keyring_"]
+
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     if format_ == ExportFormat.JSON:
         click.echo(data.json())
@@ -269,6 +285,8 @@ def export(ctx: click.Context, format_: str):
 @EXPORT_FORMAT_OPTION
 @click.pass_context
 def import_(ctx: click.Context, file, format_: str):
+    keyring = ctx.obj["keyring_"]
+
     if format_ == ExportFormat.JSON:
         try:
             imported_data = json.load(file)
@@ -281,7 +299,7 @@ def import_(ctx: click.Context, file, format_: str):
     except DBUnsupportedVersion as e:
         raise ClickUsageError(e)
 
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
 
     try:
@@ -302,8 +320,9 @@ def add(ctx: click.Context):
 @click.pass_context
 def add_uri(ctx: click.Context, alias: str):
     quiet = ctx.obj["quiet"]
+    keyring = ctx.obj["keyring_"]
 
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     if alias in data.otp:
         raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
@@ -320,7 +339,7 @@ def add_uri(ctx: click.Context, alias: str):
         params=uri_parsed.params,
     )
 
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     data.add_alias(alias, alias_data)
     db.write(data)
@@ -371,11 +390,13 @@ def add_hotp(
     counter: int,
 ):
     quiet = ctx.obj["quiet"]
+    keyring = ctx.obj["keyring_"]
+
     input_secret = click.prompt(
         "Enter secret", confirmation_prompt=True, hide_input=True
     )
 
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     if alias in data.otp:
         raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
@@ -390,8 +411,6 @@ def add_hotp(
         params=HOTPParams(counter=counter),
     )
 
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
-    data = get_db_data(db)
     data.add_alias(alias, alias_data)
     db.write(data)
     if not quiet:
@@ -428,11 +447,13 @@ def add_totp(
     initial_time: datetime.datetime,
 ):
     quiet = ctx.obj["quiet"]
+    keyring = ctx.obj["keyring_"]
+
     input_secret = click.prompt(
         "Enter secret", confirmation_prompt=True, hide_input=True
     )
 
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    db = get_decrypted_db(keyring)
     data = get_db_data(db)
     if alias in data.otp:
         raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
@@ -447,8 +468,6 @@ def add_totp(
         params=TOTPParams(initial_time=initial_time, time_step_seconds=period),
     )
 
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
-    data = get_db_data(db)
     data.add_alias(alias, alias_data)
     db.write(data)
     if not quiet:
@@ -460,7 +479,9 @@ def add_totp(
 @click.argument("new_alias")
 @click.pass_context
 def rename(ctx: click.Context, old_alias: str, new_alias: str):
-    db = JSONEncryptedDB(path=settings.DB_PATH, key=keyring_get().encode())
+    keyring = ctx.obj["keyring_"]
+
+    db = get_decrypted_db(keyring)
     data = db.read()
     try:
         data.otp[new_alias] = data.otp.pop(old_alias)
