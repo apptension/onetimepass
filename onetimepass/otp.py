@@ -328,34 +328,38 @@ def add_uri(ctx: click.Context, alias: str):
         click.echo(f"{alias} added")
 
 
+def default_add_otp_options(fn):
+    @functools.wraps(fn)
+    @click.option("label", "-l", "--label")
+    @click.option("issuer", "-i", "--issuer")
+    @click.option(
+        "algorithm",
+        "-a",
+        "--algorithm",
+        show_default=True,
+        type=click.Choice(OTPAlgorithm),
+        default=OTPAlgorithm.SHA1.value,
+    )
+    @click.option(
+        "digits_count",
+        "-d",
+        "--digits-count",
+        show_default=True,
+        type=click.INT,
+        default=settings.DEFAULT_DIGITS_COUNT,
+    )
+    def _wrapped(*args, **kwargs):
+        return fn(*args, **kwargs)
+
+    return _wrapped
+
+
 @add.command("hotp", help="Add the new HOTP secret as the specified ALIAS.")
 @click.argument("alias")
-@click.option("label", "-l", "--label")
-@click.option("issuer", "-i", "--issuer")
 @click.option(
-    "algorithm",
-    "-a",
-    "--algorithm",
-    show_default=True,
-    type=click.Choice(OTPAlgorithm),
-    default=OTPAlgorithm.SHA1.value,
+    "counter", "-c", "--counter", type=click.INT,
 )
-@click.option(
-    "digits_count",
-    "-dc",
-    "--digits-count",
-    show_default=True,
-    type=click.INT,
-    default=settings.DEFAULT_DIGITS_COUNT,
-)
-@click.option(
-    "counter",
-    "-p",
-    "--counter",
-    type=click.INT,
-    show_default=True,
-    default=settings.DEFAULT_HOTP_COUNTER,
-)
+@default_add_otp_options  # this must be after click.option line-wise
 @click.pass_context
 def add_hotp(
     ctx: click.Context,
@@ -396,24 +400,6 @@ def add_hotp(
 
 @add.command("totp", help="Add the new TOTP secret as the specified ALIAS.")
 @click.argument("alias")
-@click.option("label", "-l", "--label")
-@click.option("issuer", "-i", "--issuer")
-@click.option(
-    "algorithm",
-    "-a",
-    "--algorithm",
-    show_default=True,
-    type=click.Choice(OTPAlgorithm),
-    default=OTPAlgorithm.SHA1.value,
-)
-@click.option(
-    "digits_count",
-    "-dc",
-    "--digits-count",
-    show_default=True,
-    type=click.INT,
-    default=settings.DEFAULT_DIGITS_COUNT,
-)
 @click.option(
     "period",
     "-p",
@@ -429,6 +415,7 @@ def add_hotp(
     type=click.DateTime(),
     default=get_default_initial_time,
 )
+@default_add_otp_options  # this must be after click.option line-wise
 @click.pass_context
 def add_totp(
     ctx: click.Context,
