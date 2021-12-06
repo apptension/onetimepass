@@ -54,7 +54,9 @@ def parse(uri: str) -> OTPAuthURI:
             ),
         }
         if otp_type == OTPType.TOTP
-        else {"counter": __get_query_string_value(query_parsed, "counter"),}
+        else {
+            "counter": __get_query_string_value(query_parsed, "counter"),
+        }
     )
     return OTPAuthURI(
         otp_type=otp_type,

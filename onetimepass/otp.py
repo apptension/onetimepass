@@ -423,7 +423,10 @@ def default_add_otp_options(fn):
 @add.command("hotp", help="Add the new HOTP secret as the specified ALIAS.")
 @click.argument("alias")
 @click.option(
-    "counter", "-c", "--counter", type=click.INT,
+    "counter",
+    "-c",
+    "--counter",
+    type=click.INT,
 )
 @default_add_otp_options  # this must be after click.option line-wise
 @click.pass_context
