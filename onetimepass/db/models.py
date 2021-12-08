@@ -133,7 +133,7 @@ class DatabaseSchema(BaseModel):
             hash_algorithm=hash_algorithm,
             otp_type=OTPType.TOTP,
             params=TOTPParams(
-                initial_time=initial_time, time_step_seconds=time_step_seconds,
+                initial_time=initial_time, time_step_seconds=time_step_seconds
             ),
         )
 
