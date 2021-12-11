@@ -1,9 +1,13 @@
+import abc
+
 from .models import DatabaseSchema
 
 
-class BaseDB:
+class BaseDB(abc.ABC):
+    @abc.abstractmethod
     def read(self) -> DatabaseSchema:
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def write(self, data: DatabaseSchema):
-        raise NotImplementedError
+        pass

@@ -10,6 +10,7 @@ dependencies = [
     "pydantic~=1.8",
     "cryptography~=36.0",
     "rich~=10.15",
+    "platformdirs~=2.4",
 ]
 requires-python = ">=3.10"
 dynamic = ["version"]
