@@ -1,3 +1,5 @@
+import pathlib
+
 from onetimepass import settings
 
 
@@ -12,6 +14,11 @@ class DBCorruption(BaseDBException):
 
 class DBDoesNotExist(BaseDBException):
     pass
+
+
+class DBAlreadyInitialized(BaseDBException):
+    def __init__(self, path: pathlib.Path):
+        super().__init__(f"The local database `{path}` is already initialized")
 
 
 class DBUnsupportedVersion(BaseDBException):

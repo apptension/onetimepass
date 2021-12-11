@@ -19,6 +19,7 @@ from onetimepass import otp_auth_uri
 from onetimepass import settings
 from onetimepass.db import BaseDB
 from onetimepass.db import DatabaseSchema
+from onetimepass.db import DBAlreadyInitialized
 from onetimepass.db import DBCorruption
 from onetimepass.db import DBDoesNotExist
 from onetimepass.db import DBMergeConflict
@@ -225,30 +226,25 @@ def show_all(ctx: click.Context):
 @otp.command(help="Initialize the master key and local database.")
 @click.pass_context
 def init(ctx: click.Context):
+    quiet = ctx.obj["quiet"]
+    keyring_ = ctx.obj["keyring_"]
+
+    handle_conflicting_options({"-q, --quiet": quiet, "-K, --no-keyring": not keyring_})
+
     try:
-        quiet = ctx.obj["quiet"]
-        keyring_ = ctx.obj["keyring_"]
-
-        handle_conflicting_options(
-            {"-q, --quiet": quiet, "-K, --no-keyring": not keyring_}
-        )
-
-        if JSONEncryptedDB.exists(settings.DB_PATH):
-            raise ClickUsageError(
-                f"The local database `{settings.DB_PATH}` is already initialized"
-            )
-
         db = JSONEncryptedDB.initialize(settings.DB_PATH)
-        key_ = db.key.decode()
+    except DBAlreadyInitialized as e:
+        raise ClickUsageError(e)
 
+    try:
+        key_ = db.key.decode()
         if keyring_:
             key_ = master_key.MasterKey.create_in_keyring(key_)
 
         if not quiet:
             click.echo(key_)
-    except click.ClickException as e:
-        raise e
     except Exception as e:
+        # Rollback partially created database
         pathlib.Path(settings.DB_PATH).unlink(missing_ok=True)
         raise e
 
