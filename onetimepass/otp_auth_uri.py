@@ -2,9 +2,8 @@ import datetime
 import typing
 import urllib.parse
 
-from pydantic import BaseModel
-
 from onetimepass import settings
+from onetimepass.base_model import BaseModel
 from onetimepass.db.models import get_params_by_type
 from onetimepass.db.models import HOTPParams
 from onetimepass.db.models import OTPAlgorithm
