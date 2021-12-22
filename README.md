@@ -107,8 +107,6 @@ To omit the interactive confirmation (⚠️ **unsafe!**), pas the `--yes` optio
 
 ### Showing OTP code
 
-#### Show single OTP identified by alias
-
 ```console
 $ pdm run otp show <alias>
 ```
@@ -136,20 +134,6 @@ $ pdm run otp show -w 10 <alias> | cut -d' ' -f2 | pbcopy; alert
 To extract the code when it's ready, then copy it to the system clipboard (`pbcopy` for macOS, `xclip` for Linux), and
 send the system notification to yourself when it's all finished (assuming you have the `alert` alias configured,
 available by default e.g. on Ubuntu Linux).
-
-#### Show all codes
-
-```console
-$ pdm run otp show-all
-```
-
-You can emulate the view known from the Google Authenticator (list of all the codes, refreshed dynamically) by wrapping
-the application in the external watcher (e.g. `watch`):
-```console
-$ watch -c -p -n 1 pdm run otp show-all
-```
-
-![](docs/watch-show-all.gif)
 
 ### Database import/export
 

@@ -184,45 +184,6 @@ def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
         raise NotImplementedError
 
 
-@otp.command(help="Print the one-time password for all ALIASes.")
-@click.pass_context
-def show_all(ctx: click.Context):
-    keyring = ctx.obj["keyring_"]
-
-    db = get_decrypted_db(keyring)
-    data = get_db_data(db)
-    need_db_save = False
-    for alias, alias_data in data.otp.items():
-        if alias_data.otp_type == OTPType.TOTP:
-            params = algorithm.TOTPParameters(
-                secret=alias_data.secret.encode(),
-                digits_count=alias_data.digits_count,
-                hash_algorithm=alias_data.hash_algorithm,
-                time_step_seconds=alias_data.params.time_step_seconds,
-            )
-            echo_alias(
-                alias,
-                algorithm.totp(params),
-                algorithm.get_seconds_remaining(params),
-                ctx.obj["color"],
-                params.digits_count,
-            )
-        elif alias_data.otp_type == OTPType.HOTP:
-            params = algorithm.HOTPParameters(
-                secret=alias_data.secret.encode(),
-                digits_count=alias_data.digits_count,
-                hash_algorithm=alias_data.hash_algorithm,
-                counter=alias_data.params.counter,
-            )
-            echo_hotp_alias(alias, algorithm.hotp(params), params.digits_count)
-            alias_data.params.counter += 1
-            need_db_save = True
-        else:
-            raise NotImplementedError
-    if need_db_save:
-        db.write(data)
-
-
 @otp.command(help="Initialize the master key and local database.")
 @click.pass_context
 def init(ctx: click.Context):
