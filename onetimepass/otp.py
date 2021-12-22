@@ -171,6 +171,7 @@ def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
                 params.digits_count,
             )
     elif alias_data.otp_type == OTPType.HOTP:
+        alias_data.params.counter += 1
         params = algorithm.HOTPParameters(
             secret=alias_data.secret.encode(),
             digits_count=alias_data.digits_count,
@@ -178,7 +179,10 @@ def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
             counter=alias_data.params.counter,
         )
         echo_hotp_alias(alias, algorithm.hotp(params), alias_data.digits_count)
-        alias_data.params.counter += 1
+        # This have to be the last step of the command, to make sure the
+        # database is not modified if there is any unexpected exception.
+        # Alternatively, there should be commit/rollback mechanism added to the
+        # database handler.
         db.write(data)
     else:
         raise NotImplementedError
