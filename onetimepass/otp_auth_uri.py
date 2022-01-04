@@ -15,8 +15,8 @@ SCHEMA = "otpauth"
 
 class OTPAuthURI(BaseModel):
     otp_type: OTPType
-    label: str
-    issuer: str
+    label: typing.Optional[str]
+    issuer: typing.Optional[str]
     secret: str
     algorithm: OTPAlgorithm
     digits: int
