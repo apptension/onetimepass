@@ -4,10 +4,10 @@ import datetime
 import enum
 import typing
 
-from pydantic import BaseModel
 from pydantic import validator
 
 from onetimepass import settings
+from onetimepass.base_model import BaseModel
 from onetimepass.db import exceptions
 
 """
@@ -83,6 +83,8 @@ class AliasSchema(BaseModel):
     params: typing.Union[
         HOTPParams, TOTPParams
     ]  # Type depends on the value of `otp_type`, see the validator
+    label: typing.Optional[str]
+    issuer: typing.Optional[str]
 
     @validator("params")
     def valid_params_for_otp_type(cls, v, values):

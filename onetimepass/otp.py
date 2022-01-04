@@ -396,8 +396,8 @@ def default_add_otp_options(fn):
 def add_hotp(
     ctx: click.Context,
     alias: str,
-    label: str,
-    issuer: str,
+    label: str | None,
+    issuer: str | None,
     algorithm: str,
     digits_count: int,
     counter: int,
@@ -452,8 +452,8 @@ def add_hotp(
 def add_totp(
     ctx: click.Context,
     alias: str,
-    label: str,
-    issuer: str,
+    label: str | None,
+    issuer: str | None,
     algorithm: str,
     digits_count: int,
     period: int,

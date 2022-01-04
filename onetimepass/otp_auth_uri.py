@@ -2,9 +2,8 @@ import datetime
 import typing
 import urllib.parse
 
-from pydantic import BaseModel
-
 from onetimepass import settings
+from onetimepass.base_model import BaseModel
 from onetimepass.db.models import get_params_by_type
 from onetimepass.db.models import HOTPParams
 from onetimepass.db.models import OTPAlgorithm
@@ -16,8 +15,8 @@ SCHEMA = "otpauth"
 
 class OTPAuthURI(BaseModel):
     otp_type: OTPType
-    label: str
-    issuer: str
+    label: typing.Optional[str]
+    issuer: typing.Optional[str]
     secret: str
     algorithm: OTPAlgorithm
     digits: int
