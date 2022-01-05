@@ -131,7 +131,7 @@ def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool):
     help="Shows only OTP code",
 )
 @click.pass_context
-def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
+def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool):
     keyring = ctx.obj["keyring_"]
 
     db = get_decrypted_db(keyring)
@@ -141,7 +141,7 @@ def show(ctx: click.Context, alias: str, wait: int, minimum_verbose: bool):
     except KeyError:
         raise ClickUsageError(f"Alias: {alias} does not exist")
     if alias_data.otp_type == OTPType.TOTP:
-        if wait:
+        if wait is not None:
             remaining_seconds = algorithm.get_seconds_remaining(
                 algorithm.TOTPParameters(
                     secret=alias_data.secret.encode(),
