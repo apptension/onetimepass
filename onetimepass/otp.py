@@ -364,7 +364,7 @@ def default_add_otp_options(fn):
         "-a",
         "--algorithm",
         show_default=True,
-        type=click.Choice(OTPAlgorithm),
+        type=click.Choice([i.value for i in OTPAlgorithm]),
         default=OTPAlgorithm.SHA1.value,
     )
     @click.option(
