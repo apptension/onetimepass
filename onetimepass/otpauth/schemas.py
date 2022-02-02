@@ -1,6 +1,5 @@
 import urllib.parse
 from typing import Literal
-from typing import Optional
 from typing import Union
 
 from pydantic import BaseModel
