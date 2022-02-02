@@ -431,7 +431,7 @@ def add_hotp(
         issuer=issuer,
         secret=input_secret,
         digits_count=digits_count,
-        hash_algorithm=algorithm,
+        hash_algorithm=OTPAlgorithm(algorithm),
         params=HOTPParams(counter=counter),
     )
 
@@ -488,7 +488,7 @@ def add_totp(
         issuer=issuer,
         secret=input_secret,
         digits_count=digits_count,
-        hash_algorithm=algorithm,
+        hash_algorithm=OTPAlgorithm(algorithm),
         params=TOTPParams(initial_time=initial_time, time_step_seconds=period),
     )
 
