@@ -64,15 +64,28 @@ class TOTPParams(BaseModel):
 OTPParams = typing.Union[HOTPParams, TOTPParams]
 
 
-class OTPType(str, enum.Enum):
+class StrEnum(str, enum.Enum):
+    pass
+
+
+class CaseInsensitiveStrEnum(StrEnum):
+    @classmethod
+    def _missing_(cls, value: typing.Any) -> CaseInsensitiveStrEnum | None:
+        for member in cls:
+            if member.value == str(value).upper():
+                return member
+        return None
+
+
+class OTPType(CaseInsensitiveStrEnum):
     HOTP = "HOTP"
     TOTP = "TOTP"
 
 
-class OTPAlgorithm(str, enum.Enum):
-    SHA1 = "sha1"
-    SHA256 = "sha256"
-    SHA512 = "sha512"
+class OTPAlgorithm(CaseInsensitiveStrEnum):
+    SHA1 = "SHA1"
+    SHA256 = "SHA256"
+    SHA512 = "SHA512"
 
 
 class AliasSchema(BaseModel):

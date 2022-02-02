@@ -15,7 +15,6 @@ from rich.console import Console
 
 from onetimepass import algorithm
 from onetimepass import master_key
-from onetimepass import otp_auth_uri
 from onetimepass import settings
 from onetimepass.db import BaseDB
 from onetimepass.db import DatabaseSchema
@@ -26,12 +25,13 @@ from onetimepass.db import DBMergeConflict
 from onetimepass.db import DBUnsupportedVersion
 from onetimepass.db import JSONEncryptedDB
 from onetimepass.db.models import AliasSchema
-from onetimepass.db.models import create_alias_schema
 from onetimepass.db.models import HOTPParams
 from onetimepass.db.models import OTPAlgorithm
 from onetimepass.db.models import OTPType
 from onetimepass.db.models import TOTPParams
 from onetimepass.exceptions import UnhandledFormatException
+from onetimepass.otpauth import ParsingError
+from onetimepass.otpauth import Uri
 
 
 class ClickUsageError(click.UsageError):
@@ -336,15 +336,31 @@ def add_uri(ctx: click.Context, alias: str):
         raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
 
     input_uri = click.prompt("Enter URI", confirmation_prompt=True, hide_input=True)
-    uri_parsed = otp_auth_uri.parse(input_uri)
-    alias_data = create_alias_schema(
-        otp_type=uri_parsed.otp_type,
-        label=uri_parsed.label,
-        issuer=uri_parsed.issuer,
-        secret=uri_parsed.secret,
-        digits_count=uri_parsed.digits,
-        hash_algorithm=uri_parsed.algorithm,
-        params=uri_parsed.params,
+    try:
+        uri_parsed = Uri.parse(input_uri)
+    except ParsingError as e:
+        raise ClickUsageError(e)
+
+    otp_type = OTPType(uri_parsed.type)
+    params: HOTPParams | TOTPParams
+    if otp_type == OTPType.HOTP:
+        params = HOTPParams(counter=uri_parsed.parameters.counter)
+    elif otp_type == OTPType.TOTP:
+        params = TOTPParams(
+            initial_time=get_default_initial_time(),
+            time_step_seconds=uri_parsed.parameters.period,
+        )
+    else:
+        assert False, uri_parsed.type
+
+    alias_data = AliasSchema(
+        otp_type=otp_type,
+        label=str(uri_parsed.label),
+        issuer=uri_parsed.parameters.issuer or uri_parsed.label.issuer,
+        secret=uri_parsed.parameters.secret,
+        digits_count=uri_parsed.parameters.digits,
+        hash_algorithm=uri_parsed.parameters.algorithm,
+        params=params,
     )
 
     db = get_decrypted_db(keyring)
