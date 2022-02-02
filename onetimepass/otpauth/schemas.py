@@ -9,6 +9,8 @@ from pydantic import validator
 
 from .errors import InvalidURLScheme
 
+# TODO remove commented blocks of code
+
 
 class BaseUriParameters(BaseModel, extra=Extra.forbid):
     secret: str
@@ -70,6 +72,8 @@ class LabelSchema(BaseModel, extra=Extra.forbid):
 
     @classmethod
     def parse(cls, urlencoded_label: str) -> "LabelSchema":
+        # TODO describe the canceled approach w/ `abnf` library
+        # TODO URL to the ABNF rule
         # label = accountname / issuer (":" / "%3A") *"%20" accountname'
         decoded = urllib.parse.unquote(urlencoded_label)
         if (colon_count := decoded.count(":")) > 1:
