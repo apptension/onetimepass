@@ -38,7 +38,7 @@ class ClickUsageError(click.UsageError):
     """Wrapper on the `click.UsageError that automatically wraps the error message"""
 
     def __init__(
-        self, message: str | Exception, ctx: Optional[click.Context] = None
+        self, message: str | Exception, ctx: click.Context | None = None
     ) -> None:
         super().__init__(click.wrap_text(str(message)), ctx)
 

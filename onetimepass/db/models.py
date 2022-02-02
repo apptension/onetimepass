@@ -96,8 +96,8 @@ class AliasSchema(BaseModel):
     params: typing.Union[
         HOTPParams, TOTPParams
     ]  # Type depends on the value of `otp_type`, see the validator
-    label: typing.Optional[str]
-    issuer: typing.Optional[str]
+    label: str | None
+    issuer: str | None
 
     @validator("params")
     def valid_params_for_otp_type(cls, v, values):

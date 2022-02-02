@@ -15,8 +15,8 @@ SCHEMA = "otpauth"
 
 class OTPAuthURI(BaseModel):
     otp_type: OTPType
-    label: typing.Optional[str]
-    issuer: typing.Optional[str]
+    label: str | None
+    issuer: str | None
     secret: str
     algorithm: OTPAlgorithm
     digits: int
@@ -26,7 +26,7 @@ class OTPAuthURI(BaseModel):
 def __get_query_string_value(
     parsed_query_string: dict[str, list[str]],
     param: str,
-    default: typing.Optional[typing.Any] = None,
+    default: typing.Any | None = None,
 ) -> str:
     try:
         return parsed_query_string.get(param, [default])[0]

@@ -13,7 +13,7 @@ from .errors import InvalidURLScheme
 
 class BaseUriParameters(BaseModel, extra=Extra.forbid):
     secret: str
-    issuer: Optional[str]
+    issuer: str | None
     algorithm: Literal["SHA1", "SHA256", "SHA512"] = "SHA1"
     digits: Literal[6, 8] = 6
 
@@ -46,7 +46,7 @@ class HOTPUriParameters(BaseUriParameters):
 
 
 class TOTPUriParameters(BaseUriParameters):
-    period: Optional[int] = 30
+    period: int | None = 30
 
 
 # def extract_parsed_value(node: abnf.Node, name: str) -> str | None:
@@ -67,7 +67,7 @@ class TOTPUriParameters(BaseUriParameters):
 
 class LabelSchema(BaseModel, extra=Extra.forbid):
     accountname: constr(min_length=1)
-    issuer: Optional[constr(min_length=1)]
+    issuer: constr(min_length=1) | None
 
     @classmethod
     def parse(cls, urlencoded_label: str) -> "LabelSchema":
