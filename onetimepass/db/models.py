@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import enum
 import typing
 
 from pydantic import validator
@@ -9,6 +8,8 @@ from pydantic import validator
 from onetimepass import settings
 from onetimepass.base_model import BaseModel
 from onetimepass.db import exceptions
+from onetimepass.enum import OTPAlgorithm
+from onetimepass.enum import OTPType
 
 """
 # Example database schema
@@ -62,30 +63,6 @@ class TOTPParams(BaseModel):
 
 
 OTPParams = typing.Union[HOTPParams, TOTPParams]
-
-
-class StrEnum(str, enum.Enum):
-    pass
-
-
-class CaseInsensitiveStrEnum(StrEnum):
-    @classmethod
-    def _missing_(cls, value: typing.Any) -> CaseInsensitiveStrEnum | None:
-        for member in cls:
-            if member.value == str(value).upper():
-                return member
-        return None
-
-
-class OTPType(CaseInsensitiveStrEnum):
-    HOTP = "HOTP"
-    TOTP = "TOTP"
-
-
-class OTPAlgorithm(CaseInsensitiveStrEnum):
-    SHA1 = "SHA1"
-    SHA256 = "SHA256"
-    SHA512 = "SHA512"
 
 
 class AliasSchema(BaseModel):

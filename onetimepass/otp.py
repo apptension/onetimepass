@@ -1,12 +1,10 @@
 import binascii
 import datetime
-import enum
 import functools
 import json
 import pathlib
 import time
 from typing import Dict
-from typing import Optional
 
 import click
 import cryptography.fernet
@@ -26,9 +24,10 @@ from onetimepass.db import DBUnsupportedVersion
 from onetimepass.db import JSONEncryptedDB
 from onetimepass.db.models import AliasSchema
 from onetimepass.db.models import HOTPParams
-from onetimepass.db.models import OTPAlgorithm
-from onetimepass.db.models import OTPType
 from onetimepass.db.models import TOTPParams
+from onetimepass.enum import ExportFormat
+from onetimepass.enum import OTPAlgorithm
+from onetimepass.enum import OTPType
 from onetimepass.exceptions import UnhandledFormatException
 from onetimepass.otpauth import ParsingError
 from onetimepass.otpauth import Uri
@@ -258,10 +257,6 @@ def list_(ctx: click.Context):
     data = get_db_data(db)
     for alias in data.otp.keys():
         click.echo(alias)
-
-
-class ExportFormat(str, enum.Enum):
-    JSON = "json"
 
 
 EXPORT_FORMAT_OPTION = click.option(
