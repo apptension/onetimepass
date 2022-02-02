@@ -150,23 +150,3 @@ def get_params_by_type(
     type_: OTPType,
 ) -> typing.Type[HOTPParams] | typing.Type[TOTPParams]:
     return {OTPType.HOTP: HOTPParams, OTPType.TOTP: TOTPParams}[type_]
-
-
-def create_alias_schema(
-    otp_type: OTPType,
-    label: str,
-    issuer: str,
-    secret: str,
-    digits_count: int,
-    hash_algorithm: str,
-    params: OTPParams,
-):
-    return AliasSchema(
-        otp_type=otp_type,
-        label=label,
-        issuer=issuer,
-        secret=secret,
-        digits_count=digits_count,
-        hash_algorithm=hash_algorithm,
-        params=params,
-    )
