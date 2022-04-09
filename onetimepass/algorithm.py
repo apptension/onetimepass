@@ -20,7 +20,7 @@ def _dynamic_truncation(hmac_result: bytes) -> int:
 
 
 def _truncate(hmac_result: bytes, digits_count: int) -> int:
-    return _dynamic_truncation(hmac_result) % 10 ** digits_count
+    return _dynamic_truncation(hmac_result) % 10**digits_count
 
 
 def _counter_to_bytes(counter: int) -> bytes:
