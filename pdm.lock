@@ -97,6 +97,12 @@ version = "1.6.0"
 summary = "Node.js virtual environment builder"
 
 [[package]]
+name = "pip"
+version = "21.3.1"
+requires_python = ">=3.6"
+summary = "The PyPA recommended tool for installing Python packages."
+
+[[package]]
 name = "platformdirs"
 version = "2.4.0"
 requires_python = ">=3.6"
@@ -119,6 +125,7 @@ dependencies = [
 [[package]]
 name = "pycparser"
 version = "2.21"
+requires_python = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 summary = "C parser in Python"
 
 [[package]]
@@ -159,7 +166,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "SecretStorage"
+name = "secretstorage"
 version = "3.3.1"
 requires_python = ">=3.6"
 summary = "Python bindings to FreeDesktop.org Secret Service API"
@@ -207,7 +214,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:2016d6cb2fdf1ae51c6db6167a9fc444c92eae6a43f970785cea9ef3980f27a1"
+content_hash = "sha256:56ccee626cce7f72ea145976b26577c26beabef4d8d7b5abbaa99838e2e6171b"
 
 [metadata.files]
 "backports.entry-points-selectable 1.1.1" = [
@@ -332,6 +339,10 @@ content_hash = "sha256:2016d6cb2fdf1ae51c6db6167a9fc444c92eae6a43f970785cea9ef39
 "nodeenv 1.6.0" = [
     {file = "nodeenv-1.6.0-py2.py3-none-any.whl", hash = "sha256:621e6b7076565ddcacd2db0294c0381e01fd28945ab36bcf00f41c5daf63bef7"},
     {file = "nodeenv-1.6.0.tar.gz", hash = "sha256:3ef13ff90291ba2a4a7a4ff9a979b63ffdd00a464dbe04acf0ea6471517a4c2b"},
+]
+"pip 21.3.1" = [
+    {file = "pip-21.3.1-py3-none-any.whl", hash = "sha256:deaf32dcd9ab821e359cd8330786bcd077604b5c5730c0b096eda46f95c24a2d"},
+    {file = "pip-21.3.1.tar.gz", hash = "sha256:fd11ba3d0fdb4c07fbc5ecbba0b1b719809420f25038f8ee3cd913d3faa3033a"},
 ]
 "platformdirs 2.4.0" = [
     {file = "platformdirs-2.4.0-py3-none-any.whl", hash = "sha256:8868bbe3c3c80d42f20156f22e7131d2fb321f5bc86a2a345375c6481a67021d"},

@@ -11,6 +11,7 @@ dependencies = [
     "cryptography~=36.0",
     "rich~=10.15",
     "platformdirs~=2.4",
+    "pip==21.3.1",
 ]
 requires-python = ">=3.10"
 dynamic = ["version"]
