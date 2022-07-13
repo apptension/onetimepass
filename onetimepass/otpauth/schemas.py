@@ -72,9 +72,50 @@ class LabelSchema(BaseModel, extra=Extra.forbid):
 
     @classmethod
     def parse(cls, urlencoded_label: str) -> "LabelSchema":
-        # TODO describe the canceled approach w/ `abnf` library
-        # TODO URL to the ABNF rule
-        # label = accountname / issuer (":" / "%3A") *"%20" accountname'
+        # As defined in
+        # <https://github.com/google/google-authenticator/wiki/Key-Uri-Format#label>
+        # > Represented in ABNF according to RFC 5234:
+        # > label = accountname / issuer (":" / "%3A") *"%20" accountname'
+        # and
+        # > Neither issuer nor account name may themselves contain a colon
+        #
+        # ---
+        #
+        # First approach to implement the parsing logic was to use the `abnf` library:
+        # <https://pypi.org/project/abnf/>
+        #
+        # However, the above ABNF rule for `label` is more of a pseudorule, as
+        # there's no explicit ABNF rule for neither `accountname` nor `issuer`,
+        # which requires defining the custom rules for both.
+        # That proved to be non-trivial, especially this part:
+        # > Neither issuer nor account name may themselves contain a colon
+        #
+        # At some point, the implementation looked similar to:
+        # ```
+        #     rfc3986.Rule.create("accountname = segment-nz-nc")
+        #     rfc3986.Rule.create("issuer = segment-nz-nc")
+        #     rule = rfc3986.Rule.create(
+        #         'label = accountname / issuer (":" / "%3A") *"%20" accountname'
+        #     )
+        #     try:
+        #         rule.parse_all(v)
+        #     except abnf.ParseError as e:
+        #         raise ABNFParsingError(parsed_value=v, parse_error=e)
+        #     return v
+        # ```
+        # Which was an incomplete solution, as the `segment-nz-nc` does _not_
+        # exclude the URL-encoded colon, `%3A`.
+        # We have tried to implement the custom rule instead, however, there
+        # are limitations in defining exclusion for a fixed _string_ of
+        # characters.
+        #
+        # The considered workaround was to URL-decode the label and only then
+        # parse it using ABNF. However, such manual step would reduce the
+        # convenience of using ABNF parser.
+        #
+        # In the end, it was decided that the fully manual solution (the
+        # current one), not relying on ABNF parser at all, is much simpler and
+        # straightforward to implement.
         decoded = urllib.parse.unquote(urlencoded_label)
         if (colon_count := decoded.count(":")) > 1:
             raise ValueError("colon")  # TODO
