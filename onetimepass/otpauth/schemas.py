@@ -9,8 +9,6 @@ from pydantic import validator
 
 from .errors import InvalidURLScheme
 
-# TODO remove commented blocks of code
-
 
 class BaseUriParameters(BaseModel, extra=Extra.forbid):
     secret: str
@@ -29,14 +27,6 @@ class BaseUriParameters(BaseModel, extra=Extra.forbid):
         # > The issuer parameter is a string value […], URL-encoded according to
         # > RFC 3986
 
-        # v_ = urllib.parse.quote(v, safe=":")
-        # rule = rfc3986.Rule.create("issuer = segment-nz-nc")
-        # try:
-        #     rule.parse_all(v_)
-        # except abnf.ParseError as e:
-        #     raise ABNFParsingError(parsed_value=v, parse_error=e)
-        # return v
-
         if ":" in v:
             raise ValueError("colon")
         return v
@@ -48,22 +38,6 @@ class HOTPUriParameters(BaseUriParameters):
 
 class TOTPUriParameters(BaseUriParameters):
     period: int | None = 30
-
-
-# def extract_parsed_value(node: abnf.Node, name: str) -> str | None:
-#     """Do a breadth-first search of the tree for node identified by `name`.
-#     If found, return its value.
-#     """
-#     # Based on the
-#     # <https://github.com/declaresub/abnf#extract-the-actual-address-from-an-email-address>
-#     queue = [node]
-#     while queue:
-#         n, queue = queue[0], queue[1:]
-#         if n.name == name:
-#             return n.value
-#         else:
-#             queue.extend(n.children)
-#     return None
 
 
 class LabelSchema(BaseModel, extra=Extra.forbid):
@@ -161,31 +135,6 @@ class _BaseUriSchema(BaseModel, extra=Extra.forbid):
         if v.issuer is not None and label.issuer != v.issuer:
             raise ValueError("issuer mismatch")
         return v
-
-    # @validator("label")
-    # def label_must_match_pattern(cls, v):
-    #     # As defined in
-    #     # <https://github.com/google/google-authenticator/wiki/Key-Uri-Format#label>
-    #     # > It contains an account name, which is a URI-encoded string
-    #     # and
-    #     # > Neither issuer nor account name may themselves contain a colon
-    #     #
-    #     # As defined in
-    #     # <https://github.com/google/google-authenticator/wiki/Key-Uri-Format#issuer>
-    #     # > The issuer parameter is a string value […], URL-encoded according to
-    #     # > RFC 3986
-    #     rfc3986.Rule.create("accountname = segment-nz-nc")
-    #     rfc3986.Rule.create("issuer = segment-nz-nc")
-    #     rule = rfc3986.Rule.create(
-    #         'label = accountname / issuer (":" / "%3A") *"%20" accountname'
-    #     )
-    #     try:
-    #         rule.parse_all(v)
-    #     except abnf.ParseError as e:
-    #         raise ABNFParsingError(parsed_value=v, parse_error=e)
-    #     return v
-
-    # _url_decode_label = validator("label", allow_reuse=True)(url_decode)
 
 
 class HOTPUriSchema(_BaseUriSchema):
