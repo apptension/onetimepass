@@ -226,7 +226,7 @@ def key(ctx: click.Context):
     try:
         key_ = master_key.MasterKey(use_keyring=keyring_)
     except master_key.BaseMasterKeyException as e:
-        ClickUsageError(e)
+        raise ClickUsageError(e)
     click.echo(key_)
 
 
