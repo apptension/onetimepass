@@ -7,7 +7,9 @@ from pydantic import constr
 from pydantic import Extra
 from pydantic import validator
 
+from .errors import IllegalColon
 from .errors import InvalidURLScheme
+from .errors import IssuerMismatch
 
 
 class BaseUriParameters(BaseModel, extra=Extra.forbid):
@@ -28,7 +30,7 @@ class BaseUriParameters(BaseModel, extra=Extra.forbid):
         # > RFC 3986
 
         if ":" in v:
-            raise ValueError("colon")
+            raise IllegalColon
         return v
 
 
@@ -92,7 +94,7 @@ class LabelSchema(BaseModel, extra=Extra.forbid):
         # straightforward to implement.
         decoded = urllib.parse.unquote(urlencoded_label)
         if (colon_count := decoded.count(":")) > 1:
-            raise ValueError("colon")  # TODO
+            raise IllegalColon
         elif colon_count == 1:
             issuer, accountname = decoded.split(":")
         else:
@@ -131,9 +133,14 @@ class _BaseUriSchema(BaseModel, extra=Extra.forbid):
     def parameters_issuer_equals_label_issuer(
         cls, v: Union[HOTPUriParameters, TOTPUriParameters], values
     ):
-        label: LabelSchema = values["label"]
+        try:
+            label: LabelSchema = values["label"]
+        except KeyError:
+            # `set_label` failed w/ the validation error, therefore `label` is
+            # not available, and we cannot evaluate issuer equality
+            return v
         if v.issuer is not None and label.issuer != v.issuer:
-            raise ValueError("issuer mismatch")
+            raise IssuerMismatch(parameters_issuer=v.issuer, label_issuer=label.issuer)
         return v
 
 

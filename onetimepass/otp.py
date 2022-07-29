@@ -29,6 +29,8 @@ from onetimepass.enum import ExportFormat
 from onetimepass.enum import OTPAlgorithm
 from onetimepass.enum import OTPType
 from onetimepass.exceptions import UnhandledFormatException
+from onetimepass.exceptions import UnhandledOTPTypeException
+from onetimepass.logging import logger
 from onetimepass.otpauth import ParsingError
 from onetimepass.otpauth import Uri
 
@@ -334,7 +336,8 @@ def add_uri(ctx: click.Context, alias: str):
     try:
         uri_parsed = Uri.parse(input_uri)
     except ParsingError as e:
-        raise ClickUsageError(e)
+        logger.error(e)
+        raise ClickUsageError("invalid URI")
 
     otp_type = OTPType(uri_parsed.type)
     params: HOTPParams | TOTPParams
@@ -346,7 +349,7 @@ def add_uri(ctx: click.Context, alias: str):
             time_step_seconds=uri_parsed.parameters.period,
         )
     else:
-        assert False, uri_parsed.type
+        raise UnhandledOTPTypeException(otp_type)
 
     alias_data = AliasSchema(
         otp_type=otp_type,
