@@ -361,8 +361,6 @@ def add_uri(ctx: click.Context, alias: str):
         params=params,
     )
 
-    db = get_decrypted_db(keyring)
-    data = get_db_data(db)
     data.add_alias(alias, alias_data)
     db.write(data)
     if not quiet:
