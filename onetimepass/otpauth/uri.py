@@ -28,7 +28,6 @@ class Uri(BaseModel, extra=Extra.forbid):
 
     @classmethod
     def parse(cls, uri: str) -> "Uri":
-        # TODO extract to the separate module `parser.py`?
         parsed_uri = urllib.parse.urlparse(uri)
         type_ = parsed_uri.netloc
         label = parsed_uri.path.lstrip("/")
@@ -52,17 +51,3 @@ class Uri(BaseModel, extra=Extra.forbid):
             )
         except ValidationError as e:
             raise ParsingError(e) from e
-
-
-def main():
-    from rich.pretty import pprint
-
-    # TODO reimplement as unit tests
-    uri = "otpauth://hotp/Big%20Corporation%3A%20alice%40bigco.com?algorithm=SHA1&counter=0&secret=foo&secret=bar&issuer=Big%20Corporation"
-    key_uri = Uri.parse(uri)
-    pprint(key_uri)
-    pprint(key_uri.dict())
-
-
-if __name__ == "__main__":
-    main()
