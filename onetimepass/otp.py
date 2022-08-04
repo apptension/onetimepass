@@ -1,12 +1,10 @@
 import binascii
 import datetime
-import enum
 import functools
 import json
 import pathlib
 import time
 from typing import Dict
-from typing import Optional
 
 import click
 import cryptography.fernet
@@ -15,7 +13,6 @@ from rich.console import Console
 
 from onetimepass import algorithm
 from onetimepass import master_key
-from onetimepass import otp_auth_uri
 from onetimepass import settings
 from onetimepass.db import BaseDB
 from onetimepass.db import DatabaseSchema
@@ -26,19 +23,23 @@ from onetimepass.db import DBMergeConflict
 from onetimepass.db import DBUnsupportedVersion
 from onetimepass.db import JSONEncryptedDB
 from onetimepass.db.models import AliasSchema
-from onetimepass.db.models import create_alias_schema
 from onetimepass.db.models import HOTPParams
-from onetimepass.db.models import OTPAlgorithm
-from onetimepass.db.models import OTPType
 from onetimepass.db.models import TOTPParams
+from onetimepass.enum import ExportFormat
+from onetimepass.enum import OTPAlgorithm
+from onetimepass.enum import OTPType
 from onetimepass.exceptions import UnhandledFormatException
+from onetimepass.exceptions import UnhandledOTPTypeException
+from onetimepass.logging import logger
+from onetimepass.otpauth import ParsingError
+from onetimepass.otpauth import Uri
 
 
 class ClickUsageError(click.UsageError):
     """Wrapper on the `click.UsageError that automatically wraps the error message"""
 
     def __init__(
-        self, message: str | Exception, ctx: Optional[click.Context] = None
+        self, message: str | Exception, ctx: click.Context | None = None
     ) -> None:
         super().__init__(click.wrap_text(str(message)), ctx)
 
@@ -260,10 +261,6 @@ def list_(ctx: click.Context):
         click.echo(alias)
 
 
-class ExportFormat(str, enum.Enum):
-    JSON = "json"
-
-
 EXPORT_FORMAT_OPTION = click.option(
     "format_",
     "-f",
@@ -336,19 +333,34 @@ def add_uri(ctx: click.Context, alias: str):
         raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
 
     input_uri = click.prompt("Enter URI", confirmation_prompt=True, hide_input=True)
-    uri_parsed = otp_auth_uri.parse(input_uri)
-    alias_data = create_alias_schema(
-        otp_type=uri_parsed.otp_type,
-        label=uri_parsed.label,
-        issuer=uri_parsed.issuer,
-        secret=uri_parsed.secret,
-        digits_count=uri_parsed.digits,
-        hash_algorithm=uri_parsed.algorithm,
-        params=uri_parsed.params,
+    try:
+        uri_parsed = Uri.parse(input_uri)
+    except ParsingError as e:
+        logger.error(e)
+        raise ClickUsageError("invalid URI")
+
+    otp_type = OTPType(uri_parsed.type)
+    params: HOTPParams | TOTPParams
+    if otp_type == OTPType.HOTP:
+        params = HOTPParams(counter=uri_parsed.parameters.counter)
+    elif otp_type == OTPType.TOTP:
+        params = TOTPParams(
+            initial_time=get_default_initial_time(),
+            time_step_seconds=uri_parsed.parameters.period,
+        )
+    else:
+        raise UnhandledOTPTypeException(otp_type)
+
+    alias_data = AliasSchema(
+        otp_type=otp_type,
+        label=str(uri_parsed.label),
+        issuer=uri_parsed.parameters.issuer or uri_parsed.label.issuer,
+        secret=uri_parsed.parameters.secret,
+        digits_count=uri_parsed.parameters.digits,
+        hash_algorithm=uri_parsed.parameters.algorithm,
+        params=params,
     )
 
-    db = get_decrypted_db(keyring)
-    data = get_db_data(db)
     data.add_alias(alias, alias_data)
     db.write(data)
     if not quiet:
@@ -420,7 +432,7 @@ def add_hotp(
         issuer=issuer,
         secret=input_secret,
         digits_count=digits_count,
-        hash_algorithm=algorithm,
+        hash_algorithm=OTPAlgorithm(algorithm),
         params=HOTPParams(counter=counter),
     )
 
@@ -477,7 +489,7 @@ def add_totp(
         issuer=issuer,
         secret=input_secret,
         digits_count=digits_count,
-        hash_algorithm=algorithm,
+        hash_algorithm=OTPAlgorithm(algorithm),
         params=TOTPParams(initial_time=initial_time, time_step_seconds=period),
     )
 

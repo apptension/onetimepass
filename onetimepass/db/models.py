@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import enum
 import typing
 
 from pydantic import validator
@@ -9,6 +8,8 @@ from pydantic import validator
 from onetimepass import settings
 from onetimepass.base_model import BaseModel
 from onetimepass.db import exceptions
+from onetimepass.enum import OTPAlgorithm
+from onetimepass.enum import OTPType
 
 """
 # Example database schema
@@ -64,17 +65,6 @@ class TOTPParams(BaseModel):
 OTPParams = typing.Union[HOTPParams, TOTPParams]
 
 
-class OTPType(str, enum.Enum):
-    HOTP = "HOTP"
-    TOTP = "TOTP"
-
-
-class OTPAlgorithm(str, enum.Enum):
-    SHA1 = "sha1"
-    SHA256 = "sha256"
-    SHA512 = "sha512"
-
-
 class AliasSchema(BaseModel):
     secret: str
     digits_count: int
@@ -83,8 +73,8 @@ class AliasSchema(BaseModel):
     params: typing.Union[
         HOTPParams, TOTPParams
     ]  # Type depends on the value of `otp_type`, see the validator
-    label: typing.Optional[str]
-    issuer: typing.Optional[str]
+    label: str | None
+    issuer: str | None
 
     @validator("params")
     def valid_params_for_otp_type(cls, v, values):
@@ -160,23 +150,3 @@ def get_params_by_type(
     type_: OTPType,
 ) -> typing.Type[HOTPParams] | typing.Type[TOTPParams]:
     return {OTPType.HOTP: HOTPParams, OTPType.TOTP: TOTPParams}[type_]
-
-
-def create_alias_schema(
-    otp_type: OTPType,
-    label: str,
-    issuer: str,
-    secret: str,
-    digits_count: int,
-    hash_algorithm: str,
-    params: OTPParams,
-):
-    return AliasSchema(
-        otp_type=otp_type,
-        label=label,
-        issuer=issuer,
-        secret=secret,
-        digits_count=digits_count,
-        hash_algorithm=hash_algorithm,
-        params=params,
-    )

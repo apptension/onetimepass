@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "click~=8.0",
-    "pydantic~=1.8",
+    "pydantic~=1.9",
     "cryptography~=36.0",
     "rich~=10.15",
     "platformdirs~=2.4",
