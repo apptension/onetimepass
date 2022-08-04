@@ -12,7 +12,7 @@ class CaseInsensitiveStrEnum(StrEnum):
     @classmethod
     def _missing_(cls, value: Any) -> CaseInsensitiveStrEnum | None:
         for member in cls:
-            if member.value == str(value).upper():
+            if member.value.casefold() == str(value).casefold():
                 return member
         return None
 
