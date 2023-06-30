@@ -13,25 +13,20 @@ jobs:
     timeout-minutes: 2
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v2
+    - uses: actions/checkout@v3
+    - name: Set up PDM
+      uses: pdm-project/setup-pdm@v3.1
       with:
-        # This path is specific to Ubuntu
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          ${{ runner.os }}-
-    - uses: pdm-project/setup-pdm@main
-      name: Setup PDM
-      with:
-        python-version: "3.10"  # Version range or exact version of a Python version to use, the same as actions/setup-python
-        version: 1.14.0         # The version of PDM to install. Leave it as empty to use the latest version from PyPI
-        prerelease: false       # Allow prerelease versions to be installed
-        enable-pep582: true     # Enable PEP 582 package loading globally
+        python-version: "3.10"
+        architecture: x64
+        version: 2.7.4  # The version of PDM
+        prerelease: false  # Disallow prerelease versions of PDM
+        enable-pep582: true
+        allow-python-prereleases: false
+        cache: true
     - name: Install dependencies
-      run: pdm install          # Then you can use pdm in the following steps.
-    - name: Test
       run: |
-        python -m unittest
+        pdm sync
+    - name: Run unit tests
+      run: |
+        pdm run python -m unittest
