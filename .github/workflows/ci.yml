@@ -34,4 +34,4 @@ jobs:
       run: pdm sync             # Then you can use pdm in the following steps.
     - name: Test
       run: |
-        python -m unittest
+        pdm run python -m unittest
