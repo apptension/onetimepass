@@ -1,3 +1,4 @@
+import base64
 import binascii
 import datetime
 import functools
@@ -99,6 +100,17 @@ def handle_conflicting_options(options: Dict[str, bool]):
         raise ClickUsageError(f"conflicting options: {options_list}")
 
 
+def validation_error_to_str(error: pydantic.ValidationError) -> str:
+    error_messages: list[str] = [str(i.exc) for i in error.args[0]]
+
+    if len(error_messages) == 1:
+        return error_messages[0]
+
+    error_messages.insert(0, "")
+    bullet_list = "\n- ".join(error_messages)
+    return bullet_list
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option("color", "-c/-C", "--color/--no-color", default=True, show_default=True)
 @click.option("quiet", "-q", "--quiet", is_flag=True)
@@ -145,7 +157,7 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
         if wait is not None:
             remaining_seconds = algorithm.get_seconds_remaining(
                 algorithm.TOTPParameters(
-                    secret=alias_data.secret.encode(),
+                    secret=base64.b32decode(alias_data.secret),
                     digits_count=alias_data.digits_count,
                     hash_algorithm=alias_data.hash_algorithm,
                     time_step_seconds=alias_data.params.time_step_seconds,
@@ -156,7 +168,7 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
                     time.sleep(remaining_seconds)
         # Reinitialize parameters to get valid result
         params = algorithm.TOTPParameters(
-            secret=alias_data.secret.encode(),
+            secret=base64.b32decode(alias_data.secret),
             digits_count=alias_data.digits_count,
             hash_algorithm=alias_data.hash_algorithm,
             time_step_seconds=alias_data.params.time_step_seconds,
@@ -174,7 +186,7 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
     elif alias_data.otp_type == OTPType.HOTP:
         alias_data.params.counter += 1
         params = algorithm.HOTPParameters(
-            secret=alias_data.secret.encode(),
+            secret=base64.b32decode(alias_data.secret),
             digits_count=alias_data.digits_count,
             hash_algorithm=alias_data.hash_algorithm,
             counter=alias_data.params.counter,
@@ -336,7 +348,7 @@ def add_uri(ctx: click.Context, alias: str):
     try:
         uri_parsed = Uri.parse(input_uri)
     except ParsingError as e:
-        logger.error(e)
+        logger.debug(e)
         raise ClickUsageError("invalid URI")
 
     otp_type = OTPType(uri_parsed.type)
@@ -351,15 +363,18 @@ def add_uri(ctx: click.Context, alias: str):
     else:
         raise UnhandledOTPTypeException(otp_type)
 
-    alias_data = AliasSchema(
-        otp_type=otp_type,
-        label=str(uri_parsed.label),
-        issuer=uri_parsed.parameters.issuer or uri_parsed.label.issuer,
-        secret=uri_parsed.parameters.secret,
-        digits_count=uri_parsed.parameters.digits,
-        hash_algorithm=uri_parsed.parameters.algorithm,
-        params=params,
-    )
+    try:
+        alias_data = AliasSchema(
+            otp_type=otp_type,
+            label=str(uri_parsed.label),
+            issuer=uri_parsed.parameters.issuer or uri_parsed.label.issuer,
+            secret=uri_parsed.parameters.secret,
+            digits_count=uri_parsed.parameters.digits,
+            hash_algorithm=uri_parsed.parameters.algorithm,
+            params=params,
+        )
+    except pydantic.ValidationError as e:
+        raise ClickUsageError(validation_error_to_str(e))
 
     data.add_alias(alias, alias_data)
     db.write(data)
@@ -426,15 +441,18 @@ def add_hotp(
     if alias in data.otp:
         raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
 
-    alias_data = AliasSchema(
-        otp_type=OTPType.HOTP,
-        label=label,
-        issuer=issuer,
-        secret=input_secret,
-        digits_count=digits_count,
-        hash_algorithm=OTPAlgorithm(algorithm),
-        params=HOTPParams(counter=counter),
-    )
+    try:
+        alias_data = AliasSchema(
+            otp_type=OTPType.HOTP,
+            label=label,
+            issuer=issuer,
+            secret=input_secret,
+            digits_count=digits_count,
+            hash_algorithm=OTPAlgorithm(algorithm),
+            params=HOTPParams(counter=counter),
+        )
+    except pydantic.ValidationError as e:
+        raise ClickUsageError(validation_error_to_str(e))
 
     data.add_alias(alias, alias_data)
     db.write(data)
@@ -483,15 +501,18 @@ def add_totp(
     if alias in data.otp:
         raise ClickUsageError(f"Alias {alias} exists. Consider renaming it")
 
-    alias_data = AliasSchema(
-        otp_type=OTPType.TOTP,
-        label=label,
-        issuer=issuer,
-        secret=input_secret,
-        digits_count=digits_count,
-        hash_algorithm=OTPAlgorithm(algorithm),
-        params=TOTPParams(initial_time=initial_time, time_step_seconds=period),
-    )
+    try:
+        alias_data = AliasSchema(
+            otp_type=OTPType.TOTP,
+            label=label,
+            issuer=issuer,
+            secret=input_secret,
+            digits_count=digits_count,
+            hash_algorithm=OTPAlgorithm(algorithm),
+            params=TOTPParams(initial_time=initial_time, time_step_seconds=period),
+        )
+    except pydantic.ValidationError as e:
+        raise ClickUsageError(validation_error_to_str(e))
 
     data.add_alias(alias, alias_data)
     db.write(data)
