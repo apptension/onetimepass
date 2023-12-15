@@ -536,6 +536,25 @@ def rename(ctx: click.Context, old_alias: str, new_alias: str):
         raise ClickUsageError(f"Alias: {old_alias} does not exist")
 
 
+@otp.command(help="Print the database filepath and (optionally) its version.")
+@click.option(
+    "version",
+    "--version",
+    is_flag=True,
+    help="Include the database version in the output (requires the master key).",
+)
+@click.pass_context
+def db(ctx: click.Context, version: bool):
+    keyring = ctx.obj["keyring_"]
+
+    if version:
+        db = get_decrypted_db(keyring)
+        data = get_db_data(db)
+        click.echo(f"{settings.DB_PATH} (version {data.version})")
+    else:
+        click.echo(settings.DB_PATH)
+
+
 def main():
     otp()
 
