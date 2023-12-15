@@ -6,7 +6,7 @@ import hashlib
 import itertools
 import unittest
 
-from onetimepass import algorithm
+from onetimepass import otp_algorithm
 
 
 def get_secret(hash_algorithm: str) -> bytes:
@@ -50,8 +50,8 @@ class TestHOTP(unittest.TestCase):
         ]
         for counter, expected_hotp in enumerate(expected_hotps, start=counter_start):
             with self.subTest(i=counter):
-                hotp = algorithm.hotp(
-                    algorithm.HOTPParameters(
+                hotp = otp_algorithm.hotp(
+                    otp_algorithm.HOTPParameters(
                         secret=get_secret("sha1"),
                         digits_count=6,
                         hash_algorithm="sha1",
@@ -65,7 +65,7 @@ class TestTOTP(unittest.TestCase):
     # Based on https://tools.ietf.org/html/rfc6238#appendix-B
 
     @dataclasses.dataclass
-    class TestTOTPParameters(algorithm.TOTPParameters):
+    class TestTOTPParameters(otp_algorithm.TOTPParameters):
         secret: bytes = dataclasses.field(init=False)
         digits_count: int = 8
         hash_algorithm: str = "sha1"
@@ -236,5 +236,5 @@ class TestTOTP(unittest.TestCase):
     def test_totp(self):
         for test_vector in self.test_vectors:
             with self.subTest(i=test_vector.parameters.current_time):
-                totp = algorithm.totp(test_vector.parameters)
+                totp = otp_algorithm.totp(test_vector.parameters)
                 self.assertEqual(totp, test_vector.expected_totp)

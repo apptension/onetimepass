@@ -22,7 +22,7 @@ class OTPType(CaseInsensitiveStrEnum):
     TOTP = "TOTP"
 
 
-class OTPAlgorithm(CaseInsensitiveStrEnum):
+class HashAlgorithm(CaseInsensitiveStrEnum):
     SHA1 = "SHA1"
     SHA256 = "SHA256"
     SHA512 = "SHA512"
