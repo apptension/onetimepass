@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import datetime
 import typing
 
@@ -75,6 +77,14 @@ class AliasSchema(BaseModel):
     ]  # Type depends on the value of `otp_type`, see the validator
     label: str | None
     issuer: str | None
+
+    @validator("secret")
+    def valid_base32_secret(cls, v):
+        try:
+            base64.b32decode(v)
+        except binascii.Error as e:
+            raise ValueError(f"invalid Base32 value; {e}")
+        return v
 
     @validator("params")
     def valid_params_for_otp_type(cls, v, values):
