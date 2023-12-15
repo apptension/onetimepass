@@ -12,8 +12,8 @@ import cryptography.fernet
 import pydantic
 from rich.console import Console
 
-from onetimepass import algorithm
 from onetimepass import master_key
+from onetimepass import otp_algorithm
 from onetimepass import settings
 from onetimepass.db import BaseDB
 from onetimepass.db import DatabaseSchema
@@ -27,7 +27,7 @@ from onetimepass.db.models import AliasSchema
 from onetimepass.db.models import HOTPParams
 from onetimepass.db.models import TOTPParams
 from onetimepass.enum import ExportFormat
-from onetimepass.enum import OTPAlgorithm
+from onetimepass.enum import HashAlgorithm
 from onetimepass.enum import OTPType
 from onetimepass.exceptions import UnhandledFormatException
 from onetimepass.exceptions import UnhandledOTPTypeException
@@ -155,8 +155,8 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
         raise ClickUsageError(f"Alias: {alias} does not exist")
     if alias_data.otp_type == OTPType.TOTP:
         if wait is not None:
-            remaining_seconds = algorithm.get_seconds_remaining(
-                algorithm.TOTPParameters(
+            remaining_seconds = otp_algorithm.get_seconds_remaining(
+                otp_algorithm.TOTPParameters(
                     secret=base64.b32decode(alias_data.secret),
                     digits_count=alias_data.digits_count,
                     hash_algorithm=alias_data.hash_algorithm,
@@ -167,31 +167,31 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
                 with Console().status("Waiting for the next OTP..."):
                     time.sleep(remaining_seconds)
         # Reinitialize parameters to get valid result
-        params = algorithm.TOTPParameters(
+        params = otp_algorithm.TOTPParameters(
             secret=base64.b32decode(alias_data.secret),
             digits_count=alias_data.digits_count,
             hash_algorithm=alias_data.hash_algorithm,
             time_step_seconds=alias_data.params.time_step_seconds,
         )
         if minimum_verbose:
-            click.echo(f"{algorithm.totp(params):0{params.digits_count}}")
+            click.echo(f"{otp_algorithm.totp(params):0{params.digits_count}}")
         else:
             echo_alias(
                 alias,
-                algorithm.totp(params),
-                algorithm.get_seconds_remaining(params),
+                otp_algorithm.totp(params),
+                otp_algorithm.get_seconds_remaining(params),
                 ctx.obj["color"],
                 params.digits_count,
             )
     elif alias_data.otp_type == OTPType.HOTP:
         alias_data.params.counter += 1
-        params = algorithm.HOTPParameters(
+        params = otp_algorithm.HOTPParameters(
             secret=base64.b32decode(alias_data.secret),
             digits_count=alias_data.digits_count,
             hash_algorithm=alias_data.hash_algorithm,
             counter=alias_data.params.counter,
         )
-        echo_hotp_alias(alias, algorithm.hotp(params), alias_data.digits_count)
+        echo_hotp_alias(alias, otp_algorithm.hotp(params), alias_data.digits_count)
         # This have to be the last step of the command, to make sure the
         # database is not modified if there is any unexpected exception.
         # Alternatively, there should be commit/rollback mechanism added to the
@@ -370,7 +370,7 @@ def add_uri(ctx: click.Context, alias: str):
             issuer=uri_parsed.parameters.issuer or uri_parsed.label.issuer,
             secret=uri_parsed.parameters.secret,
             digits_count=uri_parsed.parameters.digits,
-            hash_algorithm=uri_parsed.parameters.algorithm,
+            hash_algorithm=uri_parsed.parameters.hash_algorithm,
             params=params,
         )
     except pydantic.ValidationError as e:
@@ -387,12 +387,12 @@ def default_add_otp_options(fn):
     @click.option("label", "-l", "--label")
     @click.option("issuer", "-i", "--issuer")
     @click.option(
-        "algorithm",
+        "hash_algorithm",
         "-a",
-        "--algorithm",
+        "--hash_algorithm",
         show_default=True,
-        type=click.Choice([i.value for i in OTPAlgorithm]),
-        default=OTPAlgorithm.SHA1.value,
+        type=click.Choice([i.value for i in HashAlgorithm]),
+        default=HashAlgorithm.SHA1.value,
     )
     @click.option(
         "digits_count",
@@ -425,7 +425,7 @@ def add_hotp(
     alias: str,
     label: str | None,
     issuer: str | None,
-    algorithm: str,
+    hash_algorithm: str,
     digits_count: int,
     counter: int,
 ):
@@ -448,7 +448,7 @@ def add_hotp(
             issuer=issuer,
             secret=input_secret,
             digits_count=digits_count,
-            hash_algorithm=OTPAlgorithm(algorithm),
+            hash_algorithm=HashAlgorithm(hash_algorithm),
             params=HOTPParams(counter=counter),
         )
     except pydantic.ValidationError as e:
@@ -484,7 +484,7 @@ def add_totp(
     alias: str,
     label: str | None,
     issuer: str | None,
-    algorithm: str,
+    hash_algorithm: str,
     digits_count: int,
     period: int,
     initial_time: datetime.datetime,
@@ -508,7 +508,7 @@ def add_totp(
             issuer=issuer,
             secret=input_secret,
             digits_count=digits_count,
-            hash_algorithm=OTPAlgorithm(algorithm),
+            hash_algorithm=HashAlgorithm(hash_algorithm),
             params=TOTPParams(initial_time=initial_time, time_step_seconds=period),
         )
     except pydantic.ValidationError as e:

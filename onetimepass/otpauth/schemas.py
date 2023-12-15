@@ -15,7 +15,7 @@ from .errors import IssuerMismatch
 class BaseUriParameters(BaseModel, extra=Extra.forbid):
     secret: str
     issuer: str | None
-    algorithm: Literal["SHA1", "SHA256", "SHA512"] = "SHA1"
+    hash_algorithm: Literal["SHA1", "SHA256", "SHA512"] = "SHA1"
     digits: int
 
     @validator("issuer")

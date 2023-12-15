@@ -10,7 +10,7 @@ from pydantic import validator
 from onetimepass import settings
 from onetimepass.base_model import BaseModel
 from onetimepass.db import exceptions
-from onetimepass.enum import OTPAlgorithm
+from onetimepass.enum import HashAlgorithm
 from onetimepass.enum import OTPType
 
 """
@@ -70,7 +70,7 @@ OTPParams = typing.Union[HOTPParams, TOTPParams]
 class AliasSchema(BaseModel):
     secret: str
     digits_count: int
-    hash_algorithm: OTPAlgorithm
+    hash_algorithm: HashAlgorithm
     otp_type: OTPType
     params: typing.Union[
         HOTPParams, TOTPParams
@@ -123,7 +123,7 @@ class DatabaseSchema(BaseModel):
         issuer: str,
         secret: str,
         digits_count: int,
-        hash_algorithm: OTPAlgorithm,
+        hash_algorithm: HashAlgorithm,
         initial_time: datetime.datetime,
         time_step_seconds: int = settings.DEFAULT_TIME_STEP_SECONDS,
     ):
