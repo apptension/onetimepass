@@ -12,7 +12,7 @@ Initial release after the hackathon
 Fixes all the critical bugs
 
 Optionally:
-- [ ] Add command to echo db version and path
+- [x] Add command to echo db version and path
 
 ## 0.3.0
 
