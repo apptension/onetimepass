@@ -112,6 +112,7 @@ def validation_error_to_str(error: pydantic.ValidationError) -> str:
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.version_option()
 @click.option("color", "-c/-C", "--color/--no-color", default=True, show_default=True)
 @click.option("quiet", "-q", "--quiet", is_flag=True)
 @click.option(
