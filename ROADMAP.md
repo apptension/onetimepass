@@ -13,7 +13,7 @@ Initial release after the hackathon
 
 Optionally:
 - [x] Add command to echo db version and path
-- [ ] Add `otp --version` option to echo the application's version (if not here,
+- [x] Add `otp --version` option to echo the application's version (if not here,
   then a must in one of later versions)
 
 ## 0.3.0
