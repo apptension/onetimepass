@@ -5,6 +5,7 @@ from typing import Union
 from pydantic import BaseModel
 from pydantic import constr
 from pydantic import Extra
+from pydantic import Field
 from pydantic import validator
 
 from .errors import IllegalColon
@@ -15,7 +16,9 @@ from .errors import IssuerMismatch
 class BaseUriParameters(BaseModel, extra=Extra.forbid):
     secret: str
     issuer: str | None
-    hash_algorithm: Literal["SHA1", "SHA256", "SHA512"] = "SHA1"
+    hash_algorithm: Literal["SHA1", "SHA256", "SHA512"] = Field(
+        "SHA1", alias="algorithm"
+    )
     digits: int
 
     @validator("issuer")
