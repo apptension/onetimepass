@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import base64
 import binascii
 import datetime
 import typing
 
 from pydantic import validator
 
+from onetimepass import base32
 from onetimepass import settings
 from onetimepass.base_model import BaseModel
 from onetimepass.db import exceptions
@@ -81,7 +81,7 @@ class AliasSchema(BaseModel):
     @validator("secret")
     def valid_base32_secret(cls, v):
         try:
-            base64.b32decode(v)
+            base32.decode(v)
         except binascii.Error as e:
             raise ValueError(f"invalid Base32 value; {e}")
         return v

@@ -1,4 +1,3 @@
-import base64
 import binascii
 import datetime
 import functools
@@ -12,6 +11,7 @@ import cryptography.fernet
 import pydantic
 from rich.console import Console
 
+from onetimepass import base32
 from onetimepass import master_key
 from onetimepass import otp_algorithm
 from onetimepass import settings
@@ -158,7 +158,7 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
         if wait is not None:
             remaining_seconds = otp_algorithm.get_seconds_remaining(
                 otp_algorithm.TOTPParameters(
-                    secret=base64.b32decode(alias_data.secret),
+                    secret=base32.decode(alias_data.secret),
                     digits_count=alias_data.digits_count,
                     hash_algorithm=alias_data.hash_algorithm,
                     time_step_seconds=alias_data.params.time_step_seconds,
@@ -169,7 +169,7 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
                     time.sleep(remaining_seconds)
         # Reinitialize parameters to get valid result
         params = otp_algorithm.TOTPParameters(
-            secret=base64.b32decode(alias_data.secret),
+            secret=base32.decode(alias_data.secret),
             digits_count=alias_data.digits_count,
             hash_algorithm=alias_data.hash_algorithm,
             time_step_seconds=alias_data.params.time_step_seconds,
@@ -187,7 +187,7 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
     elif alias_data.otp_type == OTPType.HOTP:
         alias_data.params.counter += 1
         params = otp_algorithm.HOTPParameters(
-            secret=base64.b32decode(alias_data.secret),
+            secret=base32.decode(alias_data.secret),
             digits_count=alias_data.digits_count,
             hash_algorithm=alias_data.hash_algorithm,
             counter=alias_data.params.counter,
