@@ -1,3 +1,4 @@
+import functools
 import logging
 
 from onetimepass import settings
@@ -10,9 +11,10 @@ logger.debug("Hello World")
 ```
 """
 
-logging.basicConfig(
+logging_basic_config = functools.partial(
+    logging.basicConfig,
     format="[%(asctime)s] %(levelname)s:%(module)s:%(lineno)d: %(message)s",
-    level=settings.LOG_LEVEL,
+    level=settings.DEFAULT_LOG_LEVEL,
 )
 
 logger = logging.getLogger(__name__)
