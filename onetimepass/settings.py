@@ -17,6 +17,4 @@ DEFAULT_INITIAL_HOTP_COUNTER = 0
 KEYRING_SERVICE_NAME = APP_NAME
 KEYRING_USERNAME = "master key"
 
-LOG_LEVEL = (
-    logging.DEBUG
-)  # TODO change this for the production version OR implement CLI option for that
+DEFAULT_LOG_LEVEL = logging.WARNING

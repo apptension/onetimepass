@@ -2,6 +2,7 @@ import binascii
 import datetime
 import functools
 import json
+import logging
 import pathlib
 import time
 from typing import Dict
@@ -32,6 +33,7 @@ from onetimepass.enum import OTPType
 from onetimepass.exceptions import UnhandledFormatException
 from onetimepass.exceptions import UnhandledOTPTypeException
 from onetimepass.logging import logger
+from onetimepass.logging import logging_basic_config
 from onetimepass.otpauth import ParsingError
 from onetimepass.otpauth import Uri
 
@@ -122,10 +124,23 @@ def validation_error_to_str(error: pydantic.ValidationError) -> str:
     default=master_key.MasterKey.keyring_available(),
     show_default="True if keyring installed, False otherwise",
 )
+@click.option(
+    "debug",
+    "-d/-D",
+    "--debug/--no-debug",
+    default=False,
+    show_default=True,
+    help="Enable/disable debug info.",
+)
 @click.pass_context
-def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool):
+def otp(ctx: click.Context, color: bool, quiet: bool, keyring_: bool, debug: bool):
     ctx.ensure_object(dict)
     ctx.obj.update({"color": color, "quiet": quiet, "keyring_": keyring_})
+
+    if debug:
+        logging_basic_config(level=logging.DEBUG)
+    else:
+        logging_basic_config()
 
 
 @otp.command(help="Print the one-time password for the specified ALIAS.")
