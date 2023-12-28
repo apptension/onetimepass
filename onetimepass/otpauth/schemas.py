@@ -19,7 +19,7 @@ class BaseUriParameters(BaseModel, extra=Extra.forbid):
     hash_algorithm: Literal["SHA1", "SHA256", "SHA512"] = Field(
         "SHA1", alias="algorithm"
     )
-    digits: int
+    digits: int = 6
 
     @validator("issuer")
     def issuer_must_match_pattern(cls, v):
