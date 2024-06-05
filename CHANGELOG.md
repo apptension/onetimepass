@@ -120,5 +120,5 @@ Types of changes:
 - All the basic commands
 - All the nice-to-have commands
 
-[unreleased]: https://github.com/apptension/onetimepass/compare/0.1.0...HEAD
+[0.2.0]: https://github.com/apptension/onetimepass/releases/tag/0.2.0
 [0.1.0]: https://github.com/apptension/onetimepass/releases/tag/0.1.0
