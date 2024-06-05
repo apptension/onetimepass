@@ -64,9 +64,6 @@ class TOTPParams(BaseModel):
     time_step_seconds: int
 
 
-OTPParams = typing.Union[HOTPParams, TOTPParams]
-
-
 class AliasSchema(BaseModel):
     secret: str
     digits_count: int
@@ -116,29 +113,6 @@ class DatabaseSchema(BaseModel):
     def add_alias(self, name: str, data: AliasSchema):
         self.otp[name] = data
 
-    def add_totp_alias(
-        self,
-        name: str,
-        label: str,
-        issuer: str,
-        secret: str,
-        digits_count: int,
-        hash_algorithm: HashAlgorithm,
-        initial_time: datetime.datetime,
-        time_step_seconds: int = settings.DEFAULT_TIME_STEP_SECONDS,
-    ):
-        self.otp[name] = AliasSchema(
-            secret=secret,
-            label=label,
-            issuer=issuer,
-            digits_count=digits_count,
-            hash_algorithm=hash_algorithm,
-            otp_type=OTPType.TOTP,
-            params=TOTPParams(
-                initial_time=initial_time, time_step_seconds=time_step_seconds
-            ),
-        )
-
     def merge(self, other: DatabaseSchema):
         if other.version != self.version:
             raise exceptions.DBUnsupportedMigration(
@@ -154,9 +128,3 @@ class DatabaseSchema(BaseModel):
             )
 
         self.otp |= other.otp
-
-
-def get_params_by_type(
-    type_: OTPType,
-) -> typing.Type[HOTPParams] | typing.Type[TOTPParams]:
-    return {OTPType.HOTP: HOTPParams, OTPType.TOTP: TOTPParams}[type_]
