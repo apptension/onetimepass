@@ -35,5 +35,9 @@ dev = [
     "pre-commit~=2.16",
 ]
 
+[tool.vulture]
+exclude = ["__pypackages__", ".venv"]
+paths = ["."]
+
 [project.scripts]
 otp = "onetimepass.otp:otp"
