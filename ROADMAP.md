@@ -27,7 +27,7 @@ Code quality release
 - [ ] Fix [#60][]
 
 Optionally:
-- [ ] Add tool to find unused code (vulture?)
+- [x] Add tool to find unused code (vulture?)
 - [ ] Add tool to audit security. Candidates:
     - <https://pycharm-security.readthedocs.io/en/latest/github.html>
     - <https://bandit.readthedocs.io/en/latest/>
