@@ -17,7 +17,7 @@ Types of changes:
 - Security in case of vulnerabilities.
 -->
 
-## [Unreleased]
+## [0.2.0] - 2024-06-05
 
 ### Added
 
