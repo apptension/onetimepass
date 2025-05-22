@@ -243,6 +243,37 @@ def init(ctx: click.Context):
         raise e
 
 
+@otp.command(help="Change the master key for the local database.")
+# Until we implement a rollback mechanism, let's make it a responsibility of a user
+@click.confirmation_option(prompt="Did you make a backup of your local database?")
+@click.pass_context
+def passwd(ctx: click.Context):
+    quiet = ctx.obj["quiet"]
+    keyring_ = ctx.obj["keyring_"]
+
+    handle_conflicting_options({"-q, --quiet": quiet, "-K, --no-keyring": not keyring_})
+
+    old_db = get_decrypted_db(keyring_)
+    data = get_db_data(old_db)
+
+    key_ = cryptography.fernet.Fernet.generate_key()
+    new_db = JSONEncryptedDB(path=old_db.path, key=key_)
+
+    # TODO make a backup of the old database in case of an exception
+    new_db.write(data)
+
+    try:
+        key_ = key_.decode()
+        if keyring_:
+            key_ = master_key.MasterKey.create_in_keyring(key_)
+
+        if not quiet:
+            click.echo(key_)
+    except Exception as e:
+        # TODO rollback
+        raise e
+
+
 @otp.command(help="Print the master key.")
 @click.pass_context
 def key(ctx: click.Context):
