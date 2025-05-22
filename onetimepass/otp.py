@@ -64,7 +64,14 @@ def get_db_data(db: BaseDB) -> DatabaseSchema:
 
 def get_decrypted_db(use_keyring: bool) -> JSONEncryptedDB:
     try:
-        key_ = bytes(master_key.MasterKey(use_keyring=use_keyring))
+        try:
+            key_ = bytes(master_key.MasterKey(use_keyring=use_keyring))
+        except master_key.EmptyKeyException:
+            # Fallback in case there is no master key in the keyring; this is
+            # possible during a migration of the application to another device
+            # if it's done by copying encrypted database into another device
+            key_ = bytes(master_key.MasterKey(use_keyring=False))
+
         try:
             return JSONEncryptedDB(path=settings.DB_PATH, key=key_)
         except binascii.Error as e:
