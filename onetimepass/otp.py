@@ -164,7 +164,7 @@ def show(ctx: click.Context, alias: str, wait: int | None, minimum_verbose: bool
     keyring = ctx.obj["keyring_"]
 
     db = get_decrypted_db(keyring)
-    data = db.read()
+    data = get_db_data(db)
     try:
         alias_data = data.otp[alias]
     except KeyError:
@@ -544,7 +544,7 @@ def rename(ctx: click.Context, old_alias: str, new_alias: str):
     keyring = ctx.obj["keyring_"]
 
     db = get_decrypted_db(keyring)
-    data = db.read()
+    data = get_db_data(db)
     try:
         data.otp[new_alias] = data.otp.pop(old_alias)
         db.write(data)
