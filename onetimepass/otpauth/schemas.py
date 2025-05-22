@@ -142,7 +142,11 @@ class _BaseUriSchema(BaseModel, extra=Extra.forbid):
             # `set_label` failed w/ the validation error, therefore `label` is
             # not available, and we cannot evaluate issuer equality
             return v
-        if v.issuer is not None and label.issuer != v.issuer:
+        if (
+            v.issuer is not None
+            and label.issuer is not None
+            and label.issuer != v.issuer
+        ):
             raise IssuerMismatch(parameters_issuer=v.issuer, label_issuer=label.issuer)
         return v
 
