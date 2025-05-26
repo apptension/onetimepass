@@ -4,7 +4,7 @@ default_language_version:
     python: python3.10
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
     -   id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
@@ -17,14 +17,14 @@ repos:
     # mypyc-compiled `black`, which is about 2x faster; see:
     # https://black.readthedocs.io/en/stable/integrations/source_version_control.html
 -   repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.4.2
+    rev: 25.1.0
     hooks:
     -   id: black
 -   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.13.0
+    rev: v3.15.0
     hooks:
     -   id: reorder-python-imports
 -   repo: https://github.com/jendrikseipp/vulture
-    rev: 'v2.11'
+    rev: 'v2.14'
     hooks:
     -   id: vulture
