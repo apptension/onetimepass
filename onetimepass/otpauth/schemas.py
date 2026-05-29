@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import urllib.parse
 from typing import Literal
 from typing import Union
