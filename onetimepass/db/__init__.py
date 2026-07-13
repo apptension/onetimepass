@@ -9,7 +9,6 @@ from .exceptions import DBUnsupportedVersion
 from .json_encrypted import JSONEncryptedDB
 from .models import DatabaseSchema
 
-
 __all__ = [
     "BaseDB",
     "BaseDBException",
