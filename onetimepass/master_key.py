@@ -3,7 +3,6 @@ import getpass
 
 from onetimepass import settings
 
-
 try:
     import keyring  # noqa 'keyring' in the try block with 'except ImportError' should also be defined in the except block
 except ImportError:
